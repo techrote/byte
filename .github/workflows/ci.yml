@@ -47,7 +47,8 @@ jobs:
       BYTE_USER: ${{ secrets.BYTE_USER }}
       BYTE_SSH_KEY: ${{ secrets.BYTE_SSH_KEY }}
       BYTE_KNOWN_HOSTS: ${{ secrets.BYTE_KNOWN_HOSTS }}
-      EXPECTED_FINGERPRINT: SHA256:/+RRBhGd7lNUsOiahgXDZc3K7EHCEIrike7ZzLYN8RI
+      EXPECTED_HOST_FINGERPRINT: SHA256:/+RRBhGd7lNUsOiahgXDZc3K7EHCEIrike7ZzLYN8RI
+      EXPECTED_CLIENT_FINGERPRINT: SHA256:jk35WC40b/+tQLNlHMwAh7cTFtgJI5WO1r+HfQd5iyI
     steps:
       - name: Check out repository
         uses: actions/checkout@v4
@@ -65,7 +66,7 @@ jobs:
           echo "::add-mask::$BYTE_HOST"
           echo "::add-mask::$BYTE_USER"
 
-      - name: Configure pinned SSH identity
+      - name: Configure and verify pinned SSH identity
         shell: bash
         run: |
           set -euo pipefail
@@ -75,12 +76,21 @@ jobs:
           printf '%s\n' "$BYTE_KNOWN_HOSTS" > "$HOME/.ssh/known_hosts"
           chmod 600 "$HOME/.ssh/known_hosts"
 
-          actual=$(ssh-keygen -lf "$HOME/.ssh/known_hosts" -E sha256 | awk '/ED25519/ {print $2; exit}')
-          if [[ "$actual" != "$EXPECTED_FINGERPRINT" ]]; then
+          host_actual=$(ssh-keygen -lf "$HOME/.ssh/known_hosts" -E sha256 | awk '/ED25519/ {print $2; exit}')
+          if [[ "$host_actual" != "$EXPECTED_HOST_FINGERPRINT" ]]; then
             echo "Pinned known-host fingerprint mismatch" >&2
             exit 1
           fi
           echo "Pinned ED25519 host fingerprint verified"
+
+          ssh-keygen -y -f "$HOME/.ssh/byte_agent" > "$HOME/.ssh/byte_agent.pub"
+          client_actual=$(ssh-keygen -lf "$HOME/.ssh/byte_agent.pub" -E sha256 | awk '{print $2; exit}')
+          if [[ "$client_actual" != "$EXPECTED_CLIENT_FINGERPRINT" ]]; then
+            echo "Actions private key does not match installed automation public key" >&2
+            echo "Observed client fingerprint: $client_actual" >&2
+            exit 1
+          fi
+          echo "Automation client-key fingerprint verified"
 
       - name: Execute bounded versioned Appbox task
         shell: bash

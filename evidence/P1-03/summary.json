@@ -1,0 +1,72 @@
+{
+  "task": "P1-03",
+  "result": "pass_with_caveats",
+  "canonical_active_run": 34787914479,
+  "canonical_remote_commit": "021833d7094e089fdffda36ccdaffbca9796a1b3",
+  "cleanup_verify_run": 34788058042,
+  "started_utc": "2026-09-13T22:49:40Z",
+  "finished_utc": "2026-09-13T22:50:59Z",
+  "parameters": {
+    "repetitions": 3,
+    "sequential_bytes": 1073741824,
+    "small_files": 5000,
+    "archive_files": 2048,
+    "archive_kib_each": 32,
+    "archive_payload_bytes": 67108864,
+    "archive_compressed_bytes": 33692587,
+    "archive_compressed_percent": 50.2059
+  },
+  "environment": {
+    "filesystem": "ext4",
+    "dd": "GNU coreutils 8.32",
+    "tar": "GNU tar 1.34",
+    "zstd": "1.4.8",
+    "python": "3.10.12"
+  },
+  "samples_ms": {
+    "seq_create": [6771, 7483, 7068],
+    "seq_read_buffered": [426, 366, 376],
+    "seq_copy_fsync": [5633, 6952, 7078],
+    "sha256": [9147, 9698, 9218],
+    "seq_delete": [560, 471, 492],
+    "small_create": [579, 536, 576],
+    "small_stat_read": [226, 262, 209],
+    "small_delete": [84, 85, 75],
+    "archive_create": [552, 523, 554],
+    "archive_extract": [203, 176, 195],
+    "zstd_compress_level3": [164, 171, 167],
+    "zstd_decompress": [189, 211, 206]
+  },
+  "summary": {
+    "seq_create_mib_s": {"median": 144.8783, "min": 136.8435, "max": 151.2332},
+    "seq_read_buffered_mib_s": {"median": 2723.4043, "min": 2403.7559, "max": 2797.8142, "caveat": "page_cache_dominated_not_raw_disk"},
+    "seq_copy_fsync_mib_s": {"median": 147.2957, "min": 144.6736, "max": 181.7859},
+    "sha256_mib_s": {"median": 111.0870, "min": 105.5888, "max": 111.9493},
+    "small_create_files_s": {"median": 8680.56, "min": 8635.58, "max": 9328.36},
+    "small_stat_read_files_s": {"median": 22123.89, "min": 19083.97, "max": 23923.44},
+    "small_delete_files_s": {"median": 59523.81, "min": 58823.53, "max": 66666.67},
+    "archive_create_mib_s": {"median": 115.9420, "min": 115.5235, "max": 122.3709},
+    "archive_extract_mib_s": {"median": 328.2051, "min": 315.2709, "max": 363.6364, "caveat": "cache_influenced"},
+    "zstd_compress_level3_mib_s": {"median": 383.2335, "min": 374.2690, "max": 390.2439},
+    "zstd_decompress_mib_s": {"median": 310.6796, "min": 303.3175, "max": 338.6243}
+  },
+  "interactive_ssh": {
+    "remained_available": true,
+    "fresh_connection_command_ms": 1982,
+    "measurement_context": "GitHub Actions runner to Appbox while sequential phase marker was active"
+  },
+  "quota": {
+    "before_used_kib_blocks": 13771476,
+    "soft_kib_blocks": 500000000,
+    "hard_kib_blocks": 550000000,
+    "after_used_kib_blocks": 13771472,
+    "verify_used_kib_blocks": 13771472
+  },
+  "cleanup": {
+    "active_run_reported_pass": true,
+    "verification_running_marker_present": false,
+    "verification_disposable_test_tree_present": false,
+    "verification_pass": true
+  },
+  "conclusion": "Warm artifact/cache/staging, hashing, small-file metadata and archive handling were comfortably useful in this sample; shared-host time-of-day variance remains for P1-05."
+}

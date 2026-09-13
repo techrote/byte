@@ -2,33 +2,34 @@
 set -euo pipefail
 
 # P1-04 conservative single-stream network qualification.
-# Default traffic budget: 192 MiB inbound + 96 MiB outbound across three
-# repetitions. The upload guardrail prevents accidental large qualification.
+# Runs on the trusted GitHub Actions runner and measures the exact SSH transport
+# path already used by the programme. SSH compression is disabled so zero-filled
+# payloads retain their intended byte count before encryption.
 
 repetitions=3
-download_mib=64
-upload_mib=32
-download_base='https://speed.cloudflare.com/__down'
-upload_url='https://speed.cloudflare.com/__up'
+inbound_mib=128
+outbound_mib=32
 max_outbound_mib=512
 
 while (($#)); do
   case "$1" in
     --repetitions) shift; repetitions="${1:-}" ;;
-    --download-mib) shift; download_mib="${1:-}" ;;
-    --upload-mib) shift; upload_mib="${1:-}" ;;
-    --download-base) shift; download_base="${1:-}" ;;
-    --upload-url) shift; upload_url="${1:-}" ;;
+    --inbound-mib) shift; inbound_mib="${1:-}" ;;
+    --outbound-mib) shift; outbound_mib="${1:-}" ;;
     --help|-h)
       cat <<'EOF'
 usage: qualify_network.sh [options]
 
+Required environment:
+  BYTE_HOST                 Appbox SSH host
+  BYTE_USER                 Appbox SSH user
+  BYTE_SSH_KEY_PATH         path to the dedicated private key
+  BYTE_KNOWN_HOSTS_PATH     path to the pinned known_hosts file
+
 Defaults deliberately stay far below the programme's 50 GB outbound ceiling:
-  --repetitions N      2-5 (default 3)
-  --download-mib N     16-96 per repetition (default 64)
-  --upload-mib N       4-96 per repetition (default 32)
-  --download-base URL  GET endpoint accepting ?bytes=N
-  --upload-url URL     POST endpoint accepting an arbitrary request body
+  --repetitions N           2-5 (default 3)
+  --inbound-mib N           16-512 per repetition (default 128)
+  --outbound-mib N          4-128 per repetition (default 32)
 EOF
       exit 0
       ;;
@@ -38,80 +39,132 @@ EOF
 done
 
 is_uint() { [[ "$1" =~ ^[0-9]+$ ]]; }
-for value in "$repetitions" "$download_mib" "$upload_mib"; do
+for value in "$repetitions" "$inbound_mib" "$outbound_mib"; do
   is_uint "$value" || { echo "numeric options must be positive integers" >&2; exit 2; }
 done
 (( repetitions >= 2 && repetitions <= 5 )) || { echo "repetitions must be 2-5" >&2; exit 2; }
-(( download_mib >= 16 && download_mib <= 96 )) || { echo "download-mib must be 16-96" >&2; exit 2; }
-(( upload_mib >= 4 && upload_mib <= 96 )) || { echo "upload-mib must be 4-96" >&2; exit 2; }
-planned_outbound_mib=$((repetitions * upload_mib))
+(( inbound_mib >= 16 && inbound_mib <= 512 )) || { echo "inbound-mib must be 16-512" >&2; exit 2; }
+(( outbound_mib >= 4 && outbound_mib <= 128 )) || { echo "outbound-mib must be 4-128" >&2; exit 2; }
+planned_outbound_mib=$((repetitions * outbound_mib))
 (( planned_outbound_mib <= max_outbound_mib )) || { echo "planned outbound exceeds ${max_outbound_mib} MiB script guardrail" >&2; exit 4; }
 
-for tool in curl dd stat rm date; do
+: "${BYTE_HOST:?BYTE_HOST is required}"
+: "${BYTE_USER:?BYTE_USER is required}"
+: "${BYTE_SSH_KEY_PATH:?BYTE_SSH_KEY_PATH is required}"
+: "${BYTE_KNOWN_HOSTS_PATH:?BYTE_KNOWN_HOSTS_PATH is required}"
+
+for tool in ssh dd wc date python3 mktemp rm; do
   command -v "$tool" >/dev/null 2>&1 || { echo "required tool missing: $tool" >&2; exit 3; }
 done
+[[ -r "$BYTE_SSH_KEY_PATH" ]] || { echo 'SSH key path is not readable' >&2; exit 3; }
+[[ -r "$BYTE_KNOWN_HOSTS_PATH" ]] || { echo 'known_hosts path is not readable' >&2; exit 3; }
 
-work=$(mktemp -d "$HOME/.byte-p1-04-test.XXXXXX")
-payload="$work/upload.bin"
+remote="$BYTE_USER@$BYTE_HOST"
+control_dir=$(mktemp -d)
+control_socket="$control_dir/cm.sock"
+master_started=no
+
+ssh_base=(
+  -i "$BYTE_SSH_KEY_PATH"
+  -o IdentitiesOnly=yes
+  -o BatchMode=yes
+  -o StrictHostKeyChecking=yes
+  -o UserKnownHostsFile="$BYTE_KNOWN_HOSTS_PATH"
+  -o ConnectTimeout=15
+  -o ServerAliveInterval=15
+  -o ServerAliveCountMax=2
+  -o Compression=no
+  -T
+)
+
 cleanup() {
   local rc=$?
   trap - EXIT HUP INT TERM
-  rm -rf -- "$work"
+  if [[ "$master_started" == yes ]]; then
+    ssh "${ssh_base[@]}" -S "$control_socket" -O exit "$remote" >/dev/null 2>&1 || true
+  fi
+  rm -rf -- "$control_dir"
   exit "$rc"
 }
 trap cleanup EXIT HUP INT TERM
 
-upload_bytes=$((upload_mib * 1024 * 1024))
-download_bytes=$((download_mib * 1024 * 1024))
-dd if=/dev/zero of="$payload" bs=1M count="$upload_mib" status=none
-actual_payload=$(stat -c %s "$payload")
-[[ "$actual_payload" -eq "$upload_bytes" ]] || { echo 'upload payload size mismatch' >&2; exit 5; }
+now_ns() { date +%s%N; }
+elapsed_ms() {
+  local start="$1" end="$2"
+  printf '%d\n' "$(( (end - start) / 1000000 ))"
+}
+rate_mib_s() {
+  python3 - "$1" "$2" <<'PY'
+import sys
+b = int(sys.argv[1]); ms = int(sys.argv[2])
+print(f"{(b / 1048576) / (ms / 1000):.3f}" if ms > 0 else "inf")
+PY
+}
+
+inbound_bytes=$((inbound_mib * 1024 * 1024))
+outbound_bytes=$((outbound_mib * 1024 * 1024))
 
 printf 'qualification=P1-04\n'
 printf 'started_utc=%s\n' "$(date -u +%Y-%m-%dT%H:%M:%SZ)"
+printf 'endpoint=github_actions_runner_to_appbox_ssh\n'
 printf 'repetitions=%d\n' "$repetitions"
-printf 'download_bytes_per_rep=%d\n' "$download_bytes"
-printf 'upload_bytes_per_rep=%d\n' "$upload_bytes"
-printf 'planned_inbound_bytes=%d\n' "$((repetitions * download_bytes))"
-printf 'planned_outbound_bytes=%d\n' "$((repetitions * upload_bytes))"
-printf 'curl_version=%s\n' "$(curl --version | head -n 1)"
+printf 'inbound_bytes_per_rep=%d\n' "$inbound_bytes"
+printf 'outbound_bytes_per_rep=%d\n' "$outbound_bytes"
+printf 'planned_inbound_bytes=%d\n' "$((repetitions * inbound_bytes))"
+printf 'planned_outbound_bytes=%d\n' "$((repetitions * outbound_bytes))"
+printf 'ssh_compression=disabled\n'
 printf 'provider_quota_counter_shell_visibility=not_observed\n'
-printf 'measurement_columns=direction,iteration,requested_bytes,http_code,size_bytes,time_namelookup_s,time_connect_s,time_appconnect_s,time_starttransfer_s,time_total_s,speed_bytes_per_s\n'
-
-curl_common=(
-  --fail-with-body
-  --silent
-  --show-error
-  --connect-timeout 15
-  --max-time 120
-  --retry 1
-  --retry-delay 1
-  -o /dev/null
-)
-
-# Small unreported TLS warm-up. This bounds first-request DNS/TLS surprises without
-# materially affecting the traffic budget; measured repetitions still include
-# their own connection/setup timings.
-curl "${curl_common[@]}" "${download_base}?bytes=65536" >/dev/null
+printf 'measurement_columns=class,iteration,bytes,elapsed_ms,mib_per_s\n'
 
 for ((i=1; i<=repetitions; i++)); do
-  printf 'measurement\tinbound\t%d\t%d\t' "$i" "$download_bytes"
-  curl "${curl_common[@]}" \
-    -w '%{http_code}\t%{size_download}\t%{time_namelookup}\t%{time_connect}\t%{time_appconnect}\t%{time_starttransfer}\t%{time_total}\t%{speed_download}\n' \
-    "${download_base}?bytes=${download_bytes}"
+  start=$(now_ns)
+  ssh "${ssh_base[@]}" "$remote" 'true'
+  end=$(now_ns)
+  ms=$(elapsed_ms "$start" "$end")
+  printf 'measurement\tsetup\t%d\t0\t%d\tn/a\n' "$i" "$ms"
+done
+
+start=$(now_ns)
+ssh "${ssh_base[@]}" -M -S "$control_socket" -fnNT "$remote"
+master_started=yes
+ssh "${ssh_base[@]}" -S "$control_socket" -O check "$remote" >/dev/null
+end=$(now_ns)
+master_ms=$(elapsed_ms "$start" "$end")
+printf 'control_master_setup_ms=%d\n' "$master_ms"
+
+for ((i=1; i<=repetitions; i++)); do
+  start=$(now_ns)
+  received=$(dd if=/dev/zero bs=1M count="$inbound_mib" status=none | \
+    ssh "${ssh_base[@]}" -S "$control_socket" "$remote" 'LC_ALL=C wc -c')
+  end=$(now_ns)
+  received=${received//[[:space:]]/}
+  [[ "$received" == "$inbound_bytes" ]] || {
+    echo "inbound byte-count mismatch: expected $inbound_bytes got $received" >&2
+    exit 5
+  }
+  ms=$(elapsed_ms "$start" "$end")
+  rate=$(rate_mib_s "$inbound_bytes" "$ms")
+  printf 'measurement\tinbound\t%d\t%d\t%d\t%s\n' "$i" "$inbound_bytes" "$ms" "$rate"
 done
 
 for ((i=1; i<=repetitions; i++)); do
-  printf 'measurement\toutbound\t%d\t%d\t' "$i" "$upload_bytes"
-  curl "${curl_common[@]}" \
-    -X POST \
-    -H 'Content-Type: application/octet-stream' \
-    --data-binary "@$payload" \
-    -w '%{http_code}\t%{size_upload}\t%{time_namelookup}\t%{time_connect}\t%{time_appconnect}\t%{time_starttransfer}\t%{time_total}\t%{speed_upload}\n' \
-    "$upload_url"
+  start=$(now_ns)
+  received=$(ssh "${ssh_base[@]}" -S "$control_socket" "$remote" \
+    "dd if=/dev/zero bs=1M count=$outbound_mib status=none" | LC_ALL=C wc -c)
+  end=$(now_ns)
+  received=${received//[[:space:]]/}
+  [[ "$received" == "$outbound_bytes" ]] || {
+    echo "outbound byte-count mismatch: expected $outbound_bytes got $received" >&2
+    exit 5
+  }
+  ms=$(elapsed_ms "$start" "$end")
+  rate=$(rate_mib_s "$outbound_bytes" "$ms")
+  printf 'measurement\toutbound\t%d\t%d\t%d\t%s\n' "$i" "$outbound_bytes" "$ms" "$rate"
 done
 
-rm -rf -- "$work"
+ssh "${ssh_base[@]}" -S "$control_socket" -O exit "$remote" >/dev/null
+master_started=no
+rm -rf -- "$control_dir"
 trap - EXIT HUP INT TERM
 printf 'finished_utc=%s\n' "$(date -u +%Y-%m-%dT%H:%M:%SZ)"
 printf 'cleanup=pass\n'

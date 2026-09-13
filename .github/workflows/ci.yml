@@ -41,7 +41,7 @@ jobs:
       startsWith(github.ref_name, 'remote/')
     needs: validate
     runs-on: ubuntu-latest
-    timeout-minutes: 5
+    timeout-minutes: 10
     env:
       BYTE_HOST: ${{ secrets.BYTE_HOST }}
       BYTE_USER: ${{ secrets.BYTE_USER }}
@@ -92,12 +92,12 @@ jobs:
           fi
           echo "Automation client-key fingerprint verified"
 
-      - name: Execute bounded versioned Appbox task
+      - name: Execute bounded network qualification
         shell: bash
         run: |
           set -euo pipefail
           test -f remote/task.sh
-          tar -cf - remote/task.sh tools/appbox_probe.sh | \
+          tar -cf - remote/task.sh tools/qualify_network.sh | \
             ssh \
               -i "$HOME/.ssh/byte_agent" \
               -o IdentitiesOnly=yes \
@@ -108,7 +108,7 @@ jobs:
               -o ServerAliveInterval=15 \
               -o ServerAliveCountMax=2 \
               "$BYTE_USER@$BYTE_HOST" \
-              'set -eu; tmp=$(mktemp -d /tmp/byte-remote.XXXXXX); trap '\''rm -rf "$tmp"'\'' EXIT HUP INT TERM; tar -xf - -C "$tmp"; timeout 120 bash "$tmp/remote/task.sh"'
+              'set -eu; tmp=$(mktemp -d /tmp/byte-remote.XXXXXX); trap '\''rm -rf "$tmp"'\'' EXIT HUP INT TERM; tar -xf - -C "$tmp"; timeout 480 bash "$tmp/remote/task.sh"'
 
       - name: Remove ephemeral SSH material
         if: always()

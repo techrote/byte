@@ -1,38 +1,18 @@
 #!/usr/bin/env bash
 set -euo pipefail
 
-# Default remote task for the trusted `remote/` PR execution lane.
-# Keep this intentionally read-only. Issue branches may replace this file with a
-# bounded, versioned task appropriate to that issue; fork PRs never receive the
-# Appbox credentials.
+# P0-03 live acceptance task. Fetch the exact reviewed doctor from immutable
+# commit 52462fe3b513a4d798d9e46cb22f9d0db5065a30, run read-only requirements,
+# then rely on the enclosing remote lane to discard the temporary directory.
+commit='52462fe3b513a4d798d9e46cb22f9d0db5065a30'
+doctor='./appbox_doctor.py'
+url="https://raw.githubusercontent.com/techrote/byte/${commit}/tools/appbox_doctor.py"
 
 printf 'remote_exec=ok\n'
-printf 'uid=%s\n' "$(id -u)"
-printf 'gid=%s\n' "$(id -g)"
-printf 'kernel=%s\n' "$(uname -srmo)"
-printf 'shell=%s\n' "${SHELL:-unknown}"
-
-if command -v quota >/dev/null 2>&1; then
-  echo 'quota=available'
-else
-  echo 'quota=missing'
-fi
-
-if df -h "$HOME" >/dev/null 2>&1; then
-  df -h "$HOME" | awk 'NR==1 || NR==2 {print}'
-fi
-
-for tool in git python3 rsync rclone tar gzip zstd sha256sum curl cron crontab systemctl docker; do
-  if command -v "$tool" >/dev/null 2>&1; then
-    printf 'tool:%s=present\n' "$tool"
-  else
-    printf 'tool:%s=missing\n' "$tool"
-  fi
-done
-
-if command -v docker >/dev/null 2>&1; then
-  docker version --format 'docker_client={{.Client.Version}} docker_server={{if .Server}}{{.Server.Version}}{{else}}unavailable{{end}}' 2>/dev/null || true
-  docker compose version 2>/dev/null || true
-fi
-
-printf 'remote_probe=complete\n'
+curl --fail --silent --show-error --location "$url" --output "$doctor"
+chmod 500 "$doctor"
+printf 'doctor_source_commit=%s\n' "$commit"
+python3 "$doctor" --require quota --require tool:git
+printf '%s\n' '--- doctor-json ---'
+python3 "$doctor" --json --require quota --require tool:git
+printf 'remote_doctor=complete\n'

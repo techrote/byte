@@ -23,7 +23,7 @@ jobs:
         run: |
           set -euo pipefail
           shopt -s nullglob
-          scripts=(tools/*.sh)
+          scripts=(tools/*.sh remote/*.sh)
           for script in "${scripts[@]}"; do
             echo "bash -n $script"
             bash -n "$script"
@@ -31,3 +31,75 @@ jobs:
 
       - name: Confirm workflow JSON parses independently
         run: python3 -m json.tool docs/workflow.json >/dev/null
+
+  appbox-remote:
+    name: appbox-remote-smoke
+    if: >-
+      github.event_name == 'pull_request' &&
+      github.event.pull_request.head.repo.full_name == github.repository &&
+      startsWith(github.head_ref, 'remote/')
+    needs: validate
+    runs-on: ubuntu-latest
+    timeout-minutes: 5
+    env:
+      BYTE_HOST: ${{ secrets.BYTE_HOST }}
+      BYTE_USER: ${{ secrets.BYTE_USER }}
+      BYTE_SSH_KEY: ${{ secrets.BYTE_SSH_KEY }}
+      BYTE_KNOWN_HOSTS: ${{ secrets.BYTE_KNOWN_HOSTS }}
+      EXPECTED_FINGERPRINT: SHA256:/+RRBhGd7lNUsOiahgXDZc3K7EHCEIrike7ZzLYN8RI
+    steps:
+      - name: Check out repository
+        uses: actions/checkout@v4
+
+      - name: Validate remote execution secrets
+        shell: bash
+        run: |
+          set -euo pipefail
+          for name in BYTE_HOST BYTE_USER BYTE_SSH_KEY BYTE_KNOWN_HOSTS; do
+            if [[ -z "${!name:-}" ]]; then
+              echo "Required secret $name is not available" >&2
+              exit 1
+            fi
+          done
+          echo "::add-mask::$BYTE_HOST"
+          echo "::add-mask::$BYTE_USER"
+
+      - name: Configure pinned SSH identity
+        shell: bash
+        run: |
+          set -euo pipefail
+          install -m 700 -d "$HOME/.ssh"
+          printf '%s\n' "$BYTE_SSH_KEY" > "$HOME/.ssh/byte_agent"
+          chmod 600 "$HOME/.ssh/byte_agent"
+          printf '%s\n' "$BYTE_KNOWN_HOSTS" > "$HOME/.ssh/known_hosts"
+          chmod 600 "$HOME/.ssh/known_hosts"
+
+          actual=$(ssh-keygen -lf "$HOME/.ssh/known_hosts" -E sha256 | awk '/ED25519/ {print $2; exit}')
+          if [[ "$actual" != "$EXPECTED_FINGERPRINT" ]]; then
+            echo "Pinned known-host fingerprint mismatch" >&2
+            exit 1
+          fi
+          echo "Pinned ED25519 host fingerprint verified"
+
+      - name: Execute bounded versioned Appbox task
+        shell: bash
+        run: |
+          set -euo pipefail
+          test -f remote/task.sh
+          tar -cf - remote/task.sh tools/appbox_probe.sh | \
+            ssh \
+              -i "$HOME/.ssh/byte_agent" \
+              -o IdentitiesOnly=yes \
+              -o BatchMode=yes \
+              -o StrictHostKeyChecking=yes \
+              -o UserKnownHostsFile="$HOME/.ssh/known_hosts" \
+              -o ConnectTimeout=15 \
+              -o ServerAliveInterval=15 \
+              -o ServerAliveCountMax=2 \
+              "$BYTE_USER@$BYTE_HOST" \
+              'set -eu; tmp=$(mktemp -d /tmp/byte-remote.XXXXXX); trap '\''rm -rf "$tmp"'\'' EXIT HUP INT TERM; tar -xf - -C "$tmp"; timeout 120 bash "$tmp/remote/task.sh"'
+
+      - name: Remove ephemeral SSH material
+        if: always()
+        shell: bash
+        run: rm -rf "$HOME/.ssh"

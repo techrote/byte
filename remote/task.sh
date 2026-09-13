@@ -1,38 +1,28 @@
 #!/usr/bin/env bash
 set -euo pipefail
 
-# Default remote task for the trusted `remote/` PR execution lane.
-# Keep this intentionally read-only. Issue branches may replace this file with a
-# bounded, versioned task appropriate to that issue; fork PRs never receive the
-# Appbox credentials.
+# P0-03 fixed live acceptance task. Fetch the exact reviewed doctor from
+# immutable commit 58d0a3a62c183b3326c7d66fbf4ced1c0a0a9755 into the workflow-created
+# temporary directory and run it read-only.
+commit='58d0a3a62c183b3326c7d66fbf4ced1c0a0a9755'
+script_dir=$(cd "$(dirname "$0")" && pwd)
+doctor="$script_dir/appbox_doctor.py"
+url="https://raw.githubusercontent.com/techrote/byte/${commit}/tools/appbox_doctor.py"
 
 printf 'remote_exec=ok\n'
-printf 'uid=%s\n' "$(id -u)"
-printf 'gid=%s\n' "$(id -g)"
-printf 'kernel=%s\n' "$(uname -srmo)"
-printf 'shell=%s\n' "${SHELL:-unknown}"
-
-if command -v quota >/dev/null 2>&1; then
-  echo 'quota=available'
+curl --fail --silent --show-error --location "$url" --output "$doctor"
+chmod 500 "$doctor"
+printf 'doctor_source_commit=%s\n' "$commit"
+python3 "$doctor" --require quota --require tool:git
+printf '%s\n' '--- docker-required-negative-check ---'
+if python3 "$doctor" --require docker:daemon; then
+  echo 'docker_required_unexpected_pass'
+  exit 1
 else
-  echo 'quota=missing'
+  rc=$?
+  test "$rc" -eq 2
+  echo 'docker_required_expected_fail=ok'
 fi
-
-if df -h "$HOME" >/dev/null 2>&1; then
-  df -h "$HOME" | awk 'NR==1 || NR==2 {print}'
-fi
-
-for tool in git python3 rsync rclone tar gzip zstd sha256sum curl cron crontab systemctl docker; do
-  if command -v "$tool" >/dev/null 2>&1; then
-    printf 'tool:%s=present\n' "$tool"
-  else
-    printf 'tool:%s=missing\n' "$tool"
-  fi
-done
-
-if command -v docker >/dev/null 2>&1; then
-  docker version --format 'docker_client={{.Client.Version}} docker_server={{if .Server}}{{.Server.Version}}{{else}}unavailable{{end}}' 2>/dev/null || true
-  docker compose version 2>/dev/null || true
-fi
-
-printf 'remote_probe=complete\n'
+printf '%s\n' '--- doctor-json ---'
+python3 "$doctor" --json --require quota --require tool:git
+printf 'remote_doctor=complete\n'

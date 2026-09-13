@@ -2,11 +2,11 @@
 set -euo pipefail
 
 # P1-04 conservative single-stream network qualification.
-# Default traffic budget: 384 MiB inbound + 96 MiB outbound across three
+# Default traffic budget: 192 MiB inbound + 96 MiB outbound across three
 # repetitions. The upload guardrail prevents accidental large qualification.
 
 repetitions=3
-download_mib=128
+download_mib=64
 upload_mib=32
 download_base='https://speed.cloudflare.com/__down'
 upload_url='https://speed.cloudflare.com/__up'
@@ -25,8 +25,8 @@ usage: qualify_network.sh [options]
 
 Defaults deliberately stay far below the programme's 50 GB outbound ceiling:
   --repetitions N      2-5 (default 3)
-  --download-mib N     16-512 per repetition (default 128)
-  --upload-mib N       4-128 per repetition (default 32)
+  --download-mib N     16-96 per repetition (default 64)
+  --upload-mib N       4-96 per repetition (default 32)
   --download-base URL  GET endpoint accepting ?bytes=N
   --upload-url URL     POST endpoint accepting an arbitrary request body
 EOF
@@ -42,8 +42,8 @@ for value in "$repetitions" "$download_mib" "$upload_mib"; do
   is_uint "$value" || { echo "numeric options must be positive integers" >&2; exit 2; }
 done
 (( repetitions >= 2 && repetitions <= 5 )) || { echo "repetitions must be 2-5" >&2; exit 2; }
-(( download_mib >= 16 && download_mib <= 512 )) || { echo "download-mib must be 16-512" >&2; exit 2; }
-(( upload_mib >= 4 && upload_mib <= 128 )) || { echo "upload-mib must be 4-128" >&2; exit 2; }
+(( download_mib >= 16 && download_mib <= 96 )) || { echo "download-mib must be 16-96" >&2; exit 2; }
+(( upload_mib >= 4 && upload_mib <= 96 )) || { echo "upload-mib must be 4-96" >&2; exit 2; }
 planned_outbound_mib=$((repetitions * upload_mib))
 (( planned_outbound_mib <= max_outbound_mib )) || { echo "planned outbound exceeds ${max_outbound_mib} MiB script guardrail" >&2; exit 4; }
 

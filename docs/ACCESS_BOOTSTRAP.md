@@ -1,69 +1,65 @@
 # Agent-to-Appbox access bootstrap
 
-The programme is intended to minimise repeated manual command relay. This document defines acceptable ways to give trusted automation a bounded execution path to the existing Appbox without storing credentials in this public repository.
+The programme is intended to minimise repeated manual command relay. This document defines the durable execution path from trusted repository branches to the existing Bytesized Appbox without storing credentials in this public repository.
 
-## Constraint
+## Implemented credential model
 
-The connected GitHub integration can edit this repository, issues and Actions metadata, but it does not itself provide a generic SSH terminal into the Bytesized tenant. A one-time access bootstrap is therefore expected before remote implementation issues can become fully autonomous.
+A dedicated Ed25519 key named for the byte automation role is installed in the Appbox account's `~/.ssh/authorized_keys`.
 
-## Preferred credential
+- The public key is installed on the Appbox.
+- The private key exists only in the owner's local secure copy and the repository Actions secret `BYTE_SSH_KEY`.
+- The user's general-purpose SSH identity is not reused.
+- Password authentication remains available through the provider-supported path as recovery rather than being disabled by this programme.
 
-Use a dedicated Ed25519 SSH key for automation.
-
-- Public key: may be installed in the Appbox account's `~/.ssh/authorized_keys` and may be retained as non-secret metadata if useful.
-- Private key: must remain outside repository content/issues/logs.
-- Do not reuse the user's general-purpose personal SSH key.
-- Record/verify the server host key independently so automation is not trained to accept arbitrary hosts.
-
-## Option A — direct trusted execution environment
-
-If the active agent environment can make outbound SSH connections and can hold the dedicated credential securely for the required session, use direct SSH.
-
-Advantages:
-
-- simplest path;
-- low latency;
-- easy interactive diagnosis.
-
-Limitations:
-
-- execution environments may be ephemeral;
-- a credential stored only in one transient environment is not a durable automation design.
-
-## Option B — GitHub Actions execution lane
-
-A durable option is a deliberately narrow Actions workflow that SSHes to the Appbox and runs versioned repository scripts.
-
-Recommended secret inputs, created by the repository owner through GitHub's secret UI rather than committed:
+Repository Actions secrets used by the execution lane:
 
 - `BYTE_SSH_KEY` — dedicated private key;
-- `BYTE_HOST` — Appbox hostname if treated as non-public operational configuration;
-- `BYTE_USER` — account username if not stored as a repository variable;
-- `BYTE_KNOWN_HOSTS` — pinned known-host line/fingerprint material.
+- `BYTE_HOST` — Appbox hostname;
+- `BYTE_USER` — Appbox account username;
+- `BYTE_KNOWN_HOSTS` — exact pinned known-host entry.
 
-Design requirements:
+Secret values must never be committed to Git, issues, PR bodies or evidence.
 
-- never use `StrictHostKeyChecking=no`;
-- remote commands come from reviewed/versioned scripts rather than arbitrary unlogged strings where practical;
-- secrets are not printed;
-- fork-originated workflows must not receive credentials;
-- keep Actions permissions minimal (`contents: read` unless the job needs more);
-- bound remote commands with timeouts;
-- collect only redacted evidence;
-- the remote account is already unprivileged, but scripts still obey shared-host fair-use policy.
+## Verified host identity
 
-The exact workflow should be implemented by P0-01 after confirming what GitHub secret/environment controls are available.
+The Appbox server ED25519 host key fingerprint was independently observed from the user's local connection and from a GitHub-hosted runner before the automation lane was enabled:
 
-## User assistance expected once
+`SHA256:/+RRBhGd7lNUsOiahgXDZc3K7EHCEIrike7ZzLYN8RI`
 
-The likely minimum user contribution is:
+The Actions lane refuses to run if the fingerprint derived from `BYTE_KNOWN_HOSTS` does not match this value, and SSH itself uses strict host-key checking against the pinned file.
 
-1. install the dedicated public SSH key on the Bytesized account, or enable equivalent key authentication;
-2. if the Actions lane is chosen, create the required GitHub secrets through the UI;
-3. provide/confirm the server host-key fingerprint through a trusted path if it cannot be established independently.
+## Durable GitHub Actions execution lane
 
-The user should **not** paste the Appbox password, private SSH key or long-lived token into chat or an issue.
+The canonical `.github/workflows/ci.yml` contains an `appbox-remote` job for trusted issue branches.
+
+Security and execution rules:
+
+1. The job runs only for pull requests whose head repository is this repository and whose branch name begins with `remote/`.
+2. Fork-originated pull requests therefore cannot receive the Appbox credentials.
+3. Actions permissions remain `contents: read`.
+4. Secrets are checked for presence but not printed.
+5. The dedicated private key and known-host file exist only in the ephemeral runner and are removed in an `always()` cleanup step.
+6. `StrictHostKeyChecking=yes`, `BatchMode=yes` and `IdentitiesOnly=yes` are enforced.
+7. The known-host ED25519 fingerprint is verified before connection.
+8. Remote task material comes from version-controlled repository files.
+9. The task is streamed into an ephemeral remote directory and removed automatically after execution.
+10. Remote execution is bounded by workflow and command timeouts.
+
+## Versioned remote task contract
+
+`remote/task.sh` is the fixed execution entrypoint. The default version is read-only and performs a small capability/connectivity smoke test.
+
+For later issues that need Appbox changes:
+
+- create the issue branch with the `remote/` prefix;
+- change `remote/task.sh` to the smallest bounded task required by that issue;
+- keep any supporting scripts under version control;
+- open a PR so the exact task is visible in the diff before it receives credentials;
+- let the same-repository PR workflow execute the task and capture public-safe evidence;
+- never turn the entrypoint into a general network-exposed command shell.
+
+This is deliberately powerful enough to let trusted repository issue branches perform autonomous implementation while keeping the credential boundary auditable in Git history and Actions logs.
 
 ## Recovery
 
-Before replacing routine password use, confirm that the Bytesized panel/support path can still recover access if `authorized_keys` is damaged. Do not make the automation channel the only conceivable route to the account.
+The automation channel is not the only conceivable access path. The owner retains ordinary provider-supported account access, including the Bytesized control-panel/password/support recovery route. If the dedicated key is compromised or misconfigured, remove its public key from `authorized_keys`, rotate/delete `BYTE_SSH_KEY`, and create a new dedicated automation identity before resuming remote work.

@@ -1,0 +1,36 @@
+# P1-04 public-safe canonical extracts
+# Canonical Actions run: 34788373781
+# Remote execution commit: 550a204ebecca9d9bbc99cf64d506e5ebd2d64d8
+# Cleanup verification run: 34788418001
+
+qualification=P1-04
+started_utc=2026-09-13T22:59:43Z
+repetitions=3
+download_bytes_per_rep=67108864
+upload_bytes_per_rep=33554432
+planned_inbound_bytes=201326592
+planned_outbound_bytes=100663296
+provider_quota_counter_shell_visibility=not_observed
+measurement_columns=direction,iteration,requested_bytes,http_code,size_bytes,time_namelookup_s,time_connect_s,time_appconnect_s,time_starttransfer_s,time_total_s,speed_bytes_per_s
+measurement	inbound	1	67108864	200	67108864	0.002814	0.004145	0.087221	0.129870	0.356675	188151297
+measurement	inbound	2	67108864	200	67108864	0.001788	0.003104	0.077735	0.135651	0.348890	192349634
+measurement	inbound	3	67108864	200	67108864	0.002013	0.003126	0.074292	0.105654	0.322384	208164375
+measurement	outbound	1	33554432	200	33554432	0.001880	0.003336	0.105784	0.108084	0.793623	42280064
+measurement	outbound	2	33554432	200	33554432	0.001595	0.003148	0.087938	0.089708	0.609315	55069105
+measurement	outbound	3	33554432	200	33554432	0.002009	0.003099	0.091798	0.093099	0.554667	60494732
+finished_utc=2026-09-13T22:59:47Z
+cleanup=pass
+qualification_complete=yes
+
+# Preliminary endpoint qualification
+# Actions run 34788322113 requested 128 MiB generated download after a successful
+# 64 KiB warm-up. Cloudflare returned HTTP 403 on the first measured request, so
+# the run stopped immediately. This was treated as endpoint request policy, not
+# as an Appbox throughput sample. The reusable tool was constrained accordingly.
+preliminary_128mib_download_http_code=403
+preliminary_interpretation=public_test_endpoint_policy_not_appbox_failure
+
+# Independent cleanup verification
+verified_utc=2026-09-13T23:00:40Z
+disposable_test_tree_present=no
+cleanup_verify=pass

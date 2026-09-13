@@ -97,7 +97,7 @@ jobs:
         run: |
           set -euo pipefail
           test -f remote/task.sh
-          tar -cf - remote/task.sh tools/appbox_probe.sh | \
+          tar -cf - remote/task.sh tools/appbox_probe.sh tools/qualify_docker.sh | \
             ssh \
               -i "$HOME/.ssh/byte_agent" \
               -o IdentitiesOnly=yes \

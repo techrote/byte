@@ -1,0 +1,74 @@
+{
+  "task": "P0-02",
+  "observation_utc": "2026-09-13T22:10:24Z",
+  "source_run_id": 34785970557,
+  "result": "pass_with_unknowns",
+  "tenant": {
+    "os": "Ubuntu 22.04.5 LTS",
+    "kernel": "5.15.0-186-generic",
+    "architecture": "x86_64",
+    "shell": "/bin/bash",
+    "bash_version": "5.1.16",
+    "glibc_version": "2.35",
+    "filesystem": "ext4",
+    "quota_used_human": "10598M",
+    "quota_soft_human": "477G",
+    "quota_hard_human": "525G",
+    "open_files_limit": 65536,
+    "stack_limit_kib": 8192
+  },
+  "host_reported_not_entitlement": {
+    "logical_cpus": 48,
+    "cpu_model": "Intel Xeon E5-2650 v4 @ 2.20GHz",
+    "sockets": 2,
+    "cores_per_socket": 12,
+    "threads_per_core": 2,
+    "memory_visible_gib": 251,
+    "shared_mount_total_human": "5.5T",
+    "shared_mount_available_human": "2.5T"
+  },
+  "tools_present": {
+    "git": "2.34.1",
+    "python3": "3.10.12",
+    "pip3": "22.0.2",
+    "rsync": "3.2.7",
+    "rclone": "1.62.2",
+    "tar": "1.34",
+    "gzip": "1.10",
+    "zstd": "1.4.8",
+    "xz": "5.2.5",
+    "openssl": "3.0.2",
+    "curl": "7.81.0",
+    "wget": "1.21.2",
+    "sqlite3": "3.37.2",
+    "gcc": "11.4.0",
+    "g++": "11.4.0",
+    "make": "4.3",
+    "cmake": "3.22.1",
+    "node": "24.21.0",
+    "npm": "11.19.0",
+    "ffmpeg": "4.4.2",
+    "docker_client": "24.0.2",
+    "docker_compose": "2.18.1"
+  },
+  "tools_missing": ["jq", "go", "rustc", "cargo"],
+  "scheduler": {
+    "cron_command_present": true,
+    "crontab_command_present": true,
+    "existing_crontab_observed": false,
+    "systemd_user_bus_responded_noninteractive": false
+  },
+  "docker": {
+    "client_present": true,
+    "compose_present": true,
+    "default_context": "default",
+    "daemon_accessible_in_probe": false,
+    "rootless_status": "not_yet_qualified"
+  },
+  "known_paths": {
+    "www": true,
+    ".config": true,
+    ".local": false,
+    ".docker": false
+  }
+}

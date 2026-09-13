@@ -58,6 +58,8 @@
   "cleanup": {
     "canonical_run_reported_pass": true,
     "verification_run": 34788418001,
-    "verification_result": "pending_at_evidence_creation"
+    "verified_utc": "2026-09-13T23:00:40Z",
+    "disposable_test_tree_present": false,
+    "verification_result": "pass"
   }
 }

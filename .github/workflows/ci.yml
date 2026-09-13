@@ -41,7 +41,7 @@ jobs:
       startsWith(github.ref_name, 'remote/')
     needs: validate
     runs-on: ubuntu-latest
-    timeout-minutes: 5
+    timeout-minutes: 15
     env:
       BYTE_HOST: ${{ secrets.BYTE_HOST }}
       BYTE_USER: ${{ secrets.BYTE_USER }}
@@ -92,23 +92,59 @@ jobs:
           fi
           echo "Automation client-key fingerprint verified"
 
-      - name: Execute bounded versioned Appbox task
+      - name: Execute bounded storage qualification and concurrent SSH ping
         shell: bash
         run: |
           set -euo pipefail
-          test -f remote/task.sh
-          tar -cf - remote/task.sh tools/appbox_probe.sh | \
-            ssh \
-              -i "$HOME/.ssh/byte_agent" \
-              -o IdentitiesOnly=yes \
-              -o BatchMode=yes \
-              -o StrictHostKeyChecking=yes \
-              -o UserKnownHostsFile="$HOME/.ssh/known_hosts" \
-              -o ConnectTimeout=15 \
-              -o ServerAliveInterval=15 \
-              -o ServerAliveCountMax=2 \
-              "$BYTE_USER@$BYTE_HOST" \
-              'set -eu; tmp=$(mktemp -d /tmp/byte-remote.XXXXXX); trap '\''rm -rf "$tmp"'\'' EXIT HUP INT TERM; tar -xf - -C "$tmp"; timeout 120 bash "$tmp/remote/task.sh"'
+          ssh_opts=(
+            -i "$HOME/.ssh/byte_agent"
+            -o IdentitiesOnly=yes
+            -o BatchMode=yes
+            -o StrictHostKeyChecking=yes
+            -o UserKnownHostsFile="$HOME/.ssh/known_hosts"
+            -o ConnectTimeout=15
+            -o ServerAliveInterval=15
+            -o ServerAliveCountMax=2
+          )
+          remote="$BYTE_USER@$BYTE_HOST"
+          remote_log="$RUNNER_TEMP/p1-03-remote.log"
+
+          tar -cf - remote/task.sh tools/qualify_storage.sh | \
+            ssh "${ssh_opts[@]}" "$remote" \
+              'set -eu; tmp=$(mktemp -d /tmp/byte-remote.XXXXXX); trap '\''rm -rf "$tmp"'\'' EXIT HUP INT TERM; tar -xf - -C "$tmp"; timeout 600 bash "$tmp/remote/task.sh"' \
+              >"$remote_log" 2>&1 &
+          remote_pid=$!
+
+          marker_ready=no
+          for _ in $(seq 1 20); do
+            if ssh "${ssh_opts[@]}" "$remote" 'test -f "$HOME/.byte-p1-03-running"' 2>/dev/null; then
+              marker_ready=yes
+              break
+            fi
+            if ! kill -0 "$remote_pid" 2>/dev/null; then
+              break
+            fi
+            sleep 1
+          done
+
+          if [[ "$marker_ready" == yes ]]; then
+            sleep 2
+            start_ns=$(date +%s%N)
+            ping_out=$(ssh "${ssh_opts[@]}" "$remote" 'test -f "$HOME/.byte-p1-03-running" && printf "concurrent_ssh_ping=ok\\n" && date -u +concurrent_ssh_utc=%Y-%m-%dT%H:%M:%SZ')
+            end_ns=$(date +%s%N)
+            ping_ms=$(( (end_ns - start_ns) / 1000000 ))
+            printf '%s\n' "$ping_out"
+            printf 'concurrent_ssh_ping_ms=%d\n' "$ping_ms"
+          else
+            echo 'concurrent_ssh_ping=marker_not_observed'
+          fi
+
+          set +e
+          wait "$remote_pid"
+          remote_rc=$?
+          set -e
+          cat "$remote_log"
+          exit "$remote_rc"
 
       - name: Remove ephemeral SSH material
         if: always()

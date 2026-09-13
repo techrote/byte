@@ -31,3 +31,20 @@ jobs:
 
       - name: Confirm workflow JSON parses independently
         run: python3 -m json.tool docs/workflow.json >/dev/null
+
+      - name: Independently verify Harmonia ED25519 SSH host key
+        shell: bash
+        run: |
+          set -euo pipefail
+          expected='SHA256:/+RRBhGd7lNUsOiahgXDZc3K7EHCEIrike7ZzLYN8RI'
+          for attempt in 1 2 3; do
+            ssh-keyscan -T 10 -t ed25519 harmonia.bysh.me 2>/dev/null > /tmp/harmonia.ed25519 || true
+            if [[ -s /tmp/harmonia.ed25519 ]]; then
+              break
+            fi
+            sleep 2
+          done
+          [[ -s /tmp/harmonia.ed25519 ]]
+          actual=$(ssh-keygen -lf /tmp/harmonia.ed25519 -E sha256 | awk '{print $2}' | head -n1)
+          echo "Observed Harmonia ED25519 fingerprint: $actual"
+          test "$actual" = "$expected"

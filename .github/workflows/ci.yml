@@ -41,7 +41,7 @@ jobs:
       startsWith(github.ref_name, 'remote/')
     needs: validate
     runs-on: ubuntu-latest
-    timeout-minutes: 5
+    timeout-minutes: 8
     env:
       BYTE_HOST: ${{ secrets.BYTE_HOST }}
       BYTE_USER: ${{ secrets.BYTE_USER }}
@@ -92,12 +92,88 @@ jobs:
           fi
           echo "Automation client-key fingerprint verified"
 
-      - name: Execute bounded versioned Appbox task
+      - name: Execute bounded Docker qualification setup
         shell: bash
         run: |
           set -euo pipefail
           test -f remote/task.sh
-          tar -cf - remote/task.sh tools/appbox_probe.sh tools/qualify_docker.sh | \
+
+          set +e
+          remote_out=$(
+            tar -cf - remote/task.sh | \
+              ssh \
+                -i "$HOME/.ssh/byte_agent" \
+                -o IdentitiesOnly=yes \
+                -o BatchMode=yes \
+                -o StrictHostKeyChecking=yes \
+                -o UserKnownHostsFile="$HOME/.ssh/known_hosts" \
+                -o ConnectTimeout=15 \
+                -o ServerAliveInterval=15 \
+                -o ServerAliveCountMax=2 \
+                "$BYTE_USER@$BYTE_HOST" \
+                'set -eu; tmp=$(mktemp -d /tmp/byte-remote.XXXXXX); trap '\''rm -rf "$tmp"'\'' EXIT HUP INT TERM; tar -xf - -C "$tmp"; timeout 180 bash "$tmp/remote/task.sh"' \
+              2>&1
+          )
+          remote_rc=$?
+          set -e
+
+          public_url=$(printf '%s\n' "$remote_out" | sed -n 's/^public_url=//p' | tail -n 1)
+          if [[ -n "$public_url" ]]; then
+            echo "::add-mask::$public_url"
+            printf '%s' "$public_url" > "$RUNNER_TEMP/byte_p1_02_public_url"
+          fi
+
+          printf '%s\n' "$remote_out" | sed -E 's#^public_url=.*#public_url=<redacted>#'
+
+          if [[ "$remote_rc" -ne 0 ]]; then
+            echo "Remote qualification setup failed with rc=$remote_rc" >&2
+            exit "$remote_rc"
+          fi
+          if [[ -z "$public_url" ]]; then
+            echo 'Remote qualification did not return a managed HTTPS URL' >&2
+            exit 1
+          fi
+
+      - name: Verify managed HTTPS from outside Appbox
+        shell: bash
+        run: |
+          set -euo pipefail
+          url=$(cat "$RUNNER_TEMP/byte_p1_02_public_url")
+          echo "::add-mask::$url"
+          body="$RUNNER_TEMP/byte_p1_02_https_body"
+
+          for attempt in $(seq 1 18); do
+            set +e
+            metrics=$(curl \
+              --silent --show-error --fail --location \
+              --connect-timeout 5 --max-time 12 \
+              --output "$body" \
+              --write-out 'http=%{http_code} tls_verify=%{ssl_verify_result} connect=%{time_connect} tls=%{time_appconnect} total=%{time_total}' \
+              "$url" 2>&1)
+            curl_rc=$?
+            set -e
+
+            if [[ "$curl_rc" -eq 0 ]] && grep -q 'http=200' <<<"$metrics" && grep -q 'tls_verify=0' <<<"$metrics"; then
+              echo "external_https=pass attempt=$attempt $metrics"
+              test -s "$body"
+              echo 'external_https_body=nonempty'
+              exit 0
+            fi
+
+            echo "external_https_attempt=$attempt result=retry curl_rc=$curl_rc"
+            sleep 5
+          done
+
+          echo 'external_https=fail' >&2
+          exit 1
+
+      - name: Clean exact qualification resources
+        if: always()
+        shell: bash
+        run: |
+          set -euo pipefail
+          test -f remote/cleanup.sh
+          tar -cf - remote/cleanup.sh | \
             ssh \
               -i "$HOME/.ssh/byte_agent" \
               -o IdentitiesOnly=yes \
@@ -108,7 +184,7 @@ jobs:
               -o ServerAliveInterval=15 \
               -o ServerAliveCountMax=2 \
               "$BYTE_USER@$BYTE_HOST" \
-              'set -eu; tmp=$(mktemp -d /tmp/byte-remote.XXXXXX); trap '\''rm -rf "$tmp"'\'' EXIT HUP INT TERM; tar -xf - -C "$tmp"; timeout 120 bash "$tmp/remote/task.sh"'
+              'set -eu; tmp=$(mktemp -d /tmp/byte-cleanup.XXXXXX); trap '\''rm -rf "$tmp"'\'' EXIT HUP INT TERM; tar -xf - -C "$tmp"; timeout 120 bash "$tmp/remote/cleanup.sh"'
 
       - name: Remove ephemeral SSH material
         if: always()

@@ -9,6 +9,8 @@ from __future__ import annotations
 
 import json
 from pathlib import Path
+import py_compile
+import subprocess
 import sys
 
 ROOT = Path(__file__).resolve().parents[1]
@@ -33,12 +35,15 @@ REQUIRED = [
     "docs/workflow.json",
 ]
 
-# Split the sensitive header strings so this scanner does not match its own
-# source code while still detecting accidentally committed key material.
 FORBIDDEN_TEXT = [
     "-----BEGIN " + "OPENSSH PRIVATE KEY" + "-----",
     "-----BEGIN " + "RSA PRIVATE KEY" + "-----",
     "-----BEGIN " + "EC PRIVATE KEY" + "-----",
+]
+
+SELF_TESTS = [
+    "tools/appbox_doctor.py",
+    "tools/evidence_capture.py",
 ]
 
 
@@ -110,10 +115,37 @@ def validate_workflow() -> None:
     print(f"workflow: {len(tasks)} tasks, dependency graph valid")
 
 
+def validate_python_tools() -> None:
+    scripts = sorted((ROOT / "tools").glob("*.py"))
+    for path in scripts:
+        try:
+            py_compile.compile(str(path), doraise=True)
+        except py_compile.PyCompileError as exc:
+            fail(f"python compile failed for {path.relative_to(ROOT)}: {exc}")
+    print(f"python syntax: {len(scripts)} tools compiled")
+
+    for relative in SELF_TESTS:
+        path = ROOT / relative
+        if not path.is_file():
+            fail(f"self-test target missing: {relative}")
+        proc = subprocess.run(
+            [sys.executable, str(path), "--self-test"],
+            cwd=ROOT,
+            stdout=subprocess.PIPE,
+            stderr=subprocess.STDOUT,
+            text=True,
+            timeout=20,
+            check=False,
+        )
+        if proc.returncode != 0:
+            fail(f"self-test failed for {relative}: {proc.stdout.strip()}")
+        print(proc.stdout.strip())
+
+
 def validate_no_private_key_material() -> None:
     checked = 0
     for path in ROOT.rglob("*"):
-        if not path.is_file() or ".git" in path.parts:
+        if not path.is_file() or ".git" in path.parts or "__pycache__" in path.parts:
             continue
         if path.stat().st_size > 2_000_000:
             continue
@@ -131,6 +163,7 @@ def validate_no_private_key_material() -> None:
 def main() -> None:
     validate_required_files()
     validate_workflow()
+    validate_python_tools()
     validate_no_private_key_material()
     print("repository validation: PASS")
 

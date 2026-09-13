@@ -1,0 +1,63 @@
+{
+  "task": "P1-04",
+  "result": "pass_with_shared_network_and_accounting_caveats",
+  "canonical_run": 34788373781,
+  "canonical_remote_commit": "550a204ebecca9d9bbc99cf64d506e5ebd2d64d8",
+  "started_utc": "2026-09-13T22:59:43Z",
+  "finished_utc": "2026-09-13T22:59:47Z",
+  "parameters": {
+    "repetitions": 3,
+    "download_bytes_per_rep": 67108864,
+    "upload_bytes_per_rep": 33554432,
+    "measured_inbound_bytes": 201326592,
+    "measured_outbound_bytes": 100663296,
+    "single_stream": true,
+    "outbound_guardrail_mib_per_invocation": 512
+  },
+  "inbound": {
+    "http_codes": [200, 200, 200],
+    "payload_bytes_per_sample": [67108864, 67108864, 67108864],
+    "speed_bytes_per_s": [188151297, 192349634, 208164375],
+    "median_mib_per_s": 183.4389,
+    "median_mbit_per_s": 1538.7971,
+    "range_mbit_per_s": [1505.2104, 1665.3150],
+    "coefficient_of_variation": 0.0439,
+    "median_total_s": 0.348890,
+    "median_dns_s": 0.002013,
+    "median_connect_s": 0.003126,
+    "median_tls_s": 0.077735,
+    "median_starttransfer_s": 0.129870
+  },
+  "outbound": {
+    "http_codes": [200, 200, 200],
+    "payload_bytes_per_sample": [33554432, 33554432, 33554432],
+    "speed_bytes_per_s": [42280064, 55069105, 60494732],
+    "median_mib_per_s": 52.5180,
+    "median_mbit_per_s": 440.5528,
+    "range_mbit_per_s": [338.2405, 483.9579],
+    "coefficient_of_variation": 0.1451,
+    "median_total_s": 0.609315,
+    "median_dns_s": 0.001880,
+    "median_connect_s": 0.003148,
+    "median_tls_s": 0.091798,
+    "median_starttransfer_s": 0.093099
+  },
+  "endpoint_qualification": {
+    "preliminary_run": 34788322113,
+    "requested_download_mib": 128,
+    "result": "http_403_after_successful_small_warmup",
+    "interpretation": "public_test_endpoint_request_policy_not_appbox_failure",
+    "tool_adjustment": "default download reduced to 64 MiB; selectable request range capped at 96 MiB"
+  },
+  "provider_context": {
+    "advertised_connection": "shared 10 Gbit",
+    "accounting_policy": "Appbox-generated upload counts; inbound/download to Appbox is unlimited according to current provider documentation",
+    "shell_visible_quota_counter": false,
+    "counter_delta_claimed": false
+  },
+  "cleanup": {
+    "canonical_run_reported_pass": true,
+    "verification_run": 34788418001,
+    "verification_result": "pending_at_evidence_creation"
+  }
+}

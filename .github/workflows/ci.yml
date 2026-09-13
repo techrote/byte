@@ -94,21 +94,14 @@ jobs:
 
       - name: Execute bounded network qualification
         shell: bash
+        env:
+          BYTE_SSH_KEY_PATH: ${{ github.workspace }}/.byte-agent-key-placeholder
+          BYTE_KNOWN_HOSTS_PATH: ${{ github.workspace }}/.byte-known-hosts-placeholder
         run: |
           set -euo pipefail
-          test -f remote/task.sh
-          tar -cf - remote/task.sh tools/qualify_network.sh | \
-            ssh \
-              -i "$HOME/.ssh/byte_agent" \
-              -o IdentitiesOnly=yes \
-              -o BatchMode=yes \
-              -o StrictHostKeyChecking=yes \
-              -o UserKnownHostsFile="$HOME/.ssh/known_hosts" \
-              -o ConnectTimeout=15 \
-              -o ServerAliveInterval=15 \
-              -o ServerAliveCountMax=2 \
-              "$BYTE_USER@$BYTE_HOST" \
-              'set -eu; tmp=$(mktemp -d /tmp/byte-remote.XXXXXX); trap '\''rm -rf "$tmp"'\'' EXIT HUP INT TERM; tar -xf - -C "$tmp"; timeout 480 bash "$tmp/remote/task.sh"'
+          export BYTE_SSH_KEY_PATH="$HOME/.ssh/byte_agent"
+          export BYTE_KNOWN_HOSTS_PATH="$HOME/.ssh/known_hosts"
+          bash tools/qualify_network.sh
 
       - name: Remove ephemeral SSH material
         if: always()

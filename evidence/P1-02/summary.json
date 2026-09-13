@@ -1,8 +1,9 @@
 {
   "task": "P1-02",
   "result": "blocked_pending_provider_rootless_activation",
-  "live_probe_run": 34787462598,
-  "probe_timestamp_utc": "2026-09-13T22:40:03Z",
+  "live_probe_run": 34787526206,
+  "remote_execution_commit": "4643e6c20908582bff26bf054dc69d7c92895f7c",
+  "probe_timestamp_utc": "2026-09-13T22:41:21Z",
   "docker": {
     "client_present": true,
     "client_version": "24.0.2",
@@ -13,9 +14,12 @@
     "default_endpoint_usable": false,
     "default_info_process_rc": 0,
     "default_info_semantic_error": "permission_denied_var_run_docker_sock",
+    "default_info_reachable": false,
     "provider_rootless_socket": "~/.docker/run/docker.sock",
     "provider_rootless_socket_present": false,
-    "provider_rootless_daemon_reachable": false
+    "provider_rootless_info_reachable": false,
+    "provider_rootless_daemon_reachable": false,
+    "activation_state": "provider_rootless_docker_not_initialized_or_not_exposed"
   },
   "provider_traefik_network_checked": false,
   "container_smoke_test_run": false,

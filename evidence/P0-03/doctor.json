@@ -1,0 +1,60 @@
+{
+  "schema_version": 1,
+  "source_commit": "58d0a3a62c183b3326c7d66fbf4ced1c0a0a9755",
+  "source_run_id": 34786617679,
+  "generated_at_utc": "2026-09-13T22:23:06Z",
+  "mode": "read_only",
+  "platform": {
+    "os": "Ubuntu 22.04.5 LTS",
+    "kernel": "5.15.0-186-generic",
+    "architecture": "x86_64",
+    "shell": "/bin/bash",
+    "home_shape": "/home/<provider-segment>/<account>"
+  },
+  "checks": {
+    "quota": {
+      "state": "ok",
+      "used_human": "13449M",
+      "soft_quota_human": "477G",
+      "hard_limit_human": "525G"
+    },
+    "filesystem": {
+      "state": "ok",
+      "filesystem_type": "ext4",
+      "capacity": "55%"
+    },
+    "limits": {
+      "state": "ok",
+      "open_files": 65536,
+      "processes": 1030913,
+      "stack_kib": 8192,
+      "core_blocks": 0
+    },
+    "tools": {
+      "present": ["cmake", "curl", "ffmpeg", "g++", "gcc", "git", "gzip", "make", "node", "npm", "python3", "rclone", "rsync", "sha256sum", "sqlite3", "tar", "xz", "zstd"],
+      "missing": ["cargo", "go", "jq", "rustc"],
+      "error": []
+    },
+    "scheduler": {
+      "cron": "ok",
+      "systemd_user": "error"
+    },
+    "docker": {
+      "client": "ok",
+      "compose": "ok",
+      "daemon": "error",
+      "overall": "warning"
+    },
+    "known_directories": {
+      "www": true,
+      ".config": true,
+      ".local": false,
+      ".docker": false,
+      "byte": false
+    }
+  },
+  "requirements": {
+    "quota_and_git": "pass",
+    "docker_daemon_negative_check": "expected_fail_exit_2"
+  }
+}

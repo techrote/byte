@@ -57,6 +57,35 @@ run_capture() {
   return 0
 }
 
+docker_info_probe() {
+  local label="$1"
+  shift
+  local out rc reachable=yes
+  set +e
+  out=$("$@" 2>&1)
+  rc=$?
+  set -e
+
+  # Docker 24 on the current Appbox can print a socket permission error while
+  # returning rc=0 for a formatted `docker info`. Treat common daemon/socket
+  # diagnostics as failure even when the process exit status is misleading.
+  if [[ "$rc" -ne 0 ]] || grep -Eqi \
+      'permission denied|cannot connect to the docker daemon|is the docker daemon running|error during connect|dial unix .*: connect:' \
+      <<<"$out"; then
+    reachable=no
+  fi
+
+  printf '%s_rc=%d\n' "$label" "$rc"
+  printf '%s_reachable=%s\n' "$label" "$reachable"
+  if [[ -n "$out" ]]; then
+    printf '%s_output_begin\n' "$label"
+    printf '%s\n' "$out" | redact | head -n 80
+    printf '%s_output_end\n' "$label"
+  fi
+
+  [[ "$reachable" == yes ]]
+}
+
 printf 'probe_timestamp_utc=%s\n' "$(date -u +%Y-%m-%dT%H:%M:%SZ)"
 printf 'docker_host_env_set=%s\n' "$([[ -n "${DOCKER_HOST:-}" ]] && echo yes || echo no)"
 
@@ -69,7 +98,12 @@ echo 'docker_client=present'
 run_capture docker_client_version docker --version
 run_capture docker_compose_version docker compose version
 run_capture docker_context_show docker context show
-run_capture docker_default_info docker info --format 'server={{.ServerVersion}} rootless={{json .SecurityOptions}}'
+
+if docker_info_probe docker_default_info docker info --format 'server={{.ServerVersion}} rootless={{json .SecurityOptions}}'; then
+  default_ok=1
+else
+  default_ok=0
+fi
 
 rootless_socket="$HOME/.docker/run/docker.sock"
 if [[ -S "$rootless_socket" ]]; then
@@ -84,17 +118,12 @@ fi
 
 explicit_ok=0
 if [[ -S "$rootless_socket" ]]; then
-  set +e
-  explicit_info=$(DOCKER_HOST="unix://$rootless_socket" docker info --format 'server={{.ServerVersion}} rootless={{json .SecurityOptions}}' 2>&1)
-  explicit_rc=$?
-  set -e
-  printf 'docker_rootless_info_rc=%d\n' "$explicit_rc"
-  printf 'docker_rootless_info=%s\n' "$(printf '%s' "$explicit_info" | redact | head -n 1)"
-  if [[ "$explicit_rc" -eq 0 ]] && [[ "$explicit_info" != *"permission denied"* ]]; then
+  if docker_info_probe docker_rootless_info env DOCKER_HOST="unix://$rootless_socket" docker info --format 'server={{.ServerVersion}} rootless={{json .SecurityOptions}}'; then
     explicit_ok=1
   fi
 else
   echo 'docker_rootless_info_rc=socket-absent'
+  echo 'docker_rootless_info_reachable=no'
 fi
 
 if [[ "$explicit_ok" -eq 1 ]]; then
@@ -110,6 +139,10 @@ if [[ "$explicit_ok" -eq 1 ]]; then
 else
   echo 'rootless_daemon=unreachable'
   echo 'provider_traefik_network=not_checked'
+fi
+
+if [[ "$default_ok" -eq 0 && "$explicit_ok" -eq 0 ]]; then
+  echo 'activation_state=provider_rootless_docker_not_initialized_or_not_exposed'
 fi
 
 echo 'probe_complete=yes'

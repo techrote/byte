@@ -1,13 +1,18 @@
 #!/usr/bin/env bash
 set -euo pipefail
 
-# P1-04 trusted remote task. The qualifier is single-stream, traffic-bounded and
-# cleans its temporary upload payload on success or failure.
+# P1-04 post-run verification: confirm the bounded network probe left no
+# disposable payload directory in the Appbox home directory.
 
 printf 'remote_exec=ok\n'
-printf 'qualification=P1-04-network\n'
+printf 'qualification=P1-04-network-verify\n'
+printf 'verified_utc=%s\n' "$(date -u +%Y-%m-%dT%H:%M:%SZ)"
 
-script_dir=$(cd -- "$(dirname -- "${BASH_SOURCE[0]}")" && pwd)
-repo_tmp=$(cd -- "$script_dir/.." && pwd)
+if compgen -G "$HOME/.byte-p1-04-test.*" >/dev/null; then
+  echo 'disposable_test_tree_present=yes'
+  echo 'cleanup_verify=fail'
+  exit 5
+fi
 
-bash "$repo_tmp/tools/qualify_network.sh"
+echo 'disposable_test_tree_present=no'
+echo 'cleanup_verify=pass'

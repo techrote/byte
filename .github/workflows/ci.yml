@@ -3,7 +3,9 @@ name: repository-ci
 on:
   pull_request:
   push:
-    branches: [main]
+    branches:
+      - main
+      - 'remote/**'
 
 permissions:
   contents: read
@@ -35,9 +37,8 @@ jobs:
   appbox-remote:
     name: appbox-remote-smoke
     if: >-
-      github.event_name == 'pull_request' &&
-      github.event.pull_request.head.repo.full_name == github.repository &&
-      startsWith(github.head_ref, 'remote/')
+      github.event_name == 'push' &&
+      startsWith(github.ref_name, 'remote/')
     needs: validate
     runs-on: ubuntu-latest
     timeout-minutes: 5

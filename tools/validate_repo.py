@@ -20,6 +20,7 @@ REQUIRED = [
     "docs/SCOPE.md",
     "docs/PROVIDER_MODEL.md",
     "docs/ACCESS_CAPABILITIES.md",
+    "docs/ACCESS_BOOTSTRAP.md",
     "docs/SECURITY_MODEL.md",
     "docs/QUALIFICATION.md",
     "docs/OPERATIONS.md",
@@ -32,10 +33,12 @@ REQUIRED = [
     "docs/workflow.json",
 ]
 
+# Split the sensitive header strings so this scanner does not match its own
+# source code while still detecting accidentally committed key material.
 FORBIDDEN_TEXT = [
-    "-----BEGIN OPENSSH PRIVATE KEY-----",
-    "-----BEGIN RSA PRIVATE KEY-----",
-    "-----BEGIN EC PRIVATE KEY-----",
+    "-----BEGIN " + "OPENSSH PRIVATE KEY" + "-----",
+    "-----BEGIN " + "RSA PRIVATE KEY" + "-----",
+    "-----BEGIN " + "EC PRIVATE KEY" + "-----",
 ]
 
 
@@ -87,7 +90,6 @@ def validate_workflow() -> None:
             if dep == task_id:
                 fail(f"task {task_id}: self dependency")
 
-    # DFS cycle detection.
     visiting: set[str] = set()
     done: set[str] = set()
 
@@ -113,7 +115,6 @@ def validate_no_private_key_material() -> None:
     for path in ROOT.rglob("*"):
         if not path.is_file() or ".git" in path.parts:
             continue
-        # Only inspect reasonably small UTF-8-ish repository text files.
         if path.stat().st_size > 2_000_000:
             continue
         try:

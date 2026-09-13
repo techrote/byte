@@ -8,6 +8,7 @@ Purpose: retrieval-oriented index for agents executing `techrote/byte` issues. L
 | `SCOPE.md` | whether proposed work belongs in this programme | Bytesized-only, deferred, external provider |
 | `PROVIDER_MODEL.md` | provider capabilities and constraints | rootless Docker, shared IP, no root, HTTPS, quota |
 | `ACCESS_CAPABILITIES.md` | what SSH/Docker/managed access can be used for | shell, Compose, cron, ports, compute envelope |
+| `ACCESS_BOOTSTRAP.md` | giving trusted automation a remote execution route | SSH key, GitHub secrets, known hosts, Actions |
 | `SECURITY_MODEL.md` | credentials, exposure, public repo, service boundaries | SSH key, secrets, reverse proxy, least privilege |
 | `QUALIFICATION.md` | benchmark/test methodology | bounded load, contention, HDD, network, variance |
 | `OPERATIONS.md` | directory layout, lifecycle, cleanup, monitoring | quota, logs, manifests, restart, maintenance |

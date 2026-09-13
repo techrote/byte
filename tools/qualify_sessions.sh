@@ -16,8 +16,9 @@ while (($#)); do
       cat <<'EOF'
 usage: qualify_sessions.sh --phase active|verify|ping
 
-active  Test shell startup, cron, user-systemd, existing tmux/screen, then launch
-        a delayed nohup marker intended to survive SSH disconnect.
+active  Test shell startup, foreground responsiveness, cron, user-systemd,
+        existing tmux/screen, then launch a delayed nohup marker intended to
+        survive SSH disconnect.
 verify  Verify the delayed marker exists, then remove the dedicated test tree.
 ping    Read-only timestamp/shell ping for additional connection/setup samples.
 EOF
@@ -92,6 +93,17 @@ for i in 1 2 3; do
   printf 'startup_%d=' "$i"
   bash -lc 'printf "shell=%s umask=%s\n" "${SHELL:-unknown}" "$(umask)"'
 done
+
+printf '%s\n' '--- foreground-responsiveness-with-background-job ---'
+sleep 5 &
+responsiveness_pid=$!
+sleep 1
+if kill -0 "$responsiveness_pid" 2>/dev/null && bash -lc ':'; then
+  echo 'background_responsiveness=pass'
+else
+  echo 'background_responsiveness=fail'
+fi
+wait "$responsiveness_pid"
 
 printf '%s\n' '--- cron ---'
 if command -v crontab >/dev/null 2>&1; then

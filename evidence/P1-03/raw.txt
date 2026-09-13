@@ -1,0 +1,79 @@
+# P1-03 canonical public-safe extracts
+# Active Actions run: 34787914479
+# Remote execution commit: 021833d7094e089fdffda36ccdaffbca9796a1b3
+# Cleanup verification Actions run: 34788058042
+
+concurrent_ssh_ping=ok
+concurrent_ssh_utc=2026-09-13T22:49:47Z
+concurrent_ssh_ping_ms=1982
+
+qualification=P1-03
+started_utc=2026-09-13T22:49:40Z
+repetitions=3
+sequential_mib=1024
+small_files=5000
+archive_files=2048
+archive_kib_each=32
+filesystem=ext4
+dd_version=dd (coreutils) 8.32
+tar_version=tar (GNU tar) 1.34
+zstd_version=zstd command line interface 64-bits v1.4.8
+python_version=Python 3.10.12
+quota_before_used_blocks=13771476
+quota_before_limit_blocks=550000000
+quota_before_free_blocks=536228524
+df_available_kib_preflight=2612803892
+measurement	seq_create	1	6771	1073741824
+measurement	seq_read_buffered	1	426	1073741824
+measurement	seq_copy_fsync	1	5633	1073741824
+measurement	sha256	1	9147	1073741824
+measurement	seq_delete	1	560	2147483648
+measurement	seq_create	2	7483	1073741824
+measurement	seq_read_buffered	2	366	1073741824
+measurement	seq_copy_fsync	2	6952	1073741824
+measurement	sha256	2	9698	1073741824
+measurement	seq_delete	2	471	2147483648
+measurement	seq_create	3	7068	1073741824
+measurement	seq_read_buffered	3	376	1073741824
+measurement	seq_copy_fsync	3	7078	1073741824
+measurement	sha256	3	9218	1073741824
+measurement	seq_delete	3	492	2147483648
+measurement	small_create	1	579	5000
+measurement	small_stat_read	1	226	5000
+measurement	small_delete	1	84	5000
+measurement	small_create	2	536	5000
+measurement	small_stat_read	2	262	5000
+measurement	small_delete	2	85	5000
+measurement	small_create	3	576	5000
+measurement	small_stat_read	3	209	5000
+measurement	small_delete	3	75	5000
+measurement	archive_create	1	552	67108864
+measurement	archive_extract	1	203	67108864
+measurement	zstd_compress_level3	1	164	67108864
+compressed_bytes	1	33692587
+measurement	zstd_decompress	1	189	67108864
+measurement	archive_create	2	523	67108864
+measurement	archive_extract	2	176	67108864
+measurement	zstd_compress_level3	2	171	67108864
+compressed_bytes	2	33692587
+measurement	zstd_decompress	2	211	67108864
+measurement	archive_create	3	554	67108864
+measurement	archive_extract	3	195	67108864
+measurement	zstd_compress_level3	3	167	67108864
+compressed_bytes	3	33692587
+measurement	zstd_decompress	3	206	67108864
+quota_after_used_blocks=13771472
+quota_after_limit_blocks=550000000
+quota_after_free_blocks=536228528
+finished_utc=2026-09-13T22:50:59Z
+cleanup=pass
+qualification_complete=yes
+
+# Separate read-only cleanup verification
+verified_utc=2026-09-13T22:52:45Z
+quota_verify_used_blocks=13771472
+quota_verify_limit_blocks=550000000
+quota_verify_free_blocks=536228528
+running_marker_present=no
+disposable_test_tree_present=no
+cleanup_verify=pass

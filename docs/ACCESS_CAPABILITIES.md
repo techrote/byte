@@ -53,7 +53,9 @@ Best suited to:
 - reproducible utility applications;
 - bounded workers whose CPU behaviour is neighbour-friendly.
 
-P0-02 confirmed the Docker client and Compose plugin only. A working rootless daemon and provider integration must be demonstrated by P1-02 before this capability is treated as available.
+P0-02 confirmed the Docker client and Compose plugin only. The first P1-02 live discovery pass then measured Docker 24.0.2 and Compose 2.18.1 but found Bytesized's documented `~/.docker/run/docker.sock` absent. The default `/var/run/docker.sock` is inaccessible and, importantly, the formatted Docker CLI command emitted `permission denied` while returning rc 0. Rootless Docker is therefore **not currently available to the programme** until provider-supported activation is performed and P1-02 is rerun. See `evidence/P1-02/`.
+
+Do not improvise an alternate daemon or weaken host socket permissions. Current Bytesized guidance says to activate Docker by installing a Docker app from the panel once or asking support to switch it on; only after that should the programme test the provider Traefik network, Compose persistence, restart behaviour and managed HTTPS.
 
 Not suitable as an assumption for:
 
@@ -74,6 +76,8 @@ Best suited to:
 
 Security rule: an automatically issued TLS certificate does **not** make an application safe. Exposed services still require application authentication/authorization where sensitive actions or information exist.
 
+The managed custom-container HTTPS path remains evidence-gated because P1-02 cannot reach the provider rootless Docker daemon until activation.
+
 ## Task suitability matrix
 
 | Task class | Suitability | Reason |
@@ -85,7 +89,7 @@ Security rule: an automatically issued TLS certificate does **not** make an appl
 | File format conversion | Good if modest | data-local work; measure CPU impact |
 | Scheduled cleanup/retention | Excellent | persistent always-on role |
 | Small Python services | Good | little privilege required |
-| Rootless container services | Promising, evidence-gated | provider documents support; actual daemon path still needs P1-02 proof |
+| Rootless container services | Blocked pending provider activation | client/Compose exist, but documented rootless daemon socket is absent on the measured tenant |
 | Lightweight databases/indexes | Good with durability caveat | useful state, but must remain exportable |
 | Build small utilities | Good | GCC/G++/Make/CMake are already present |
 | Large C++ build farm | Poor/conditional | shared CPU; test only if genuinely useful |

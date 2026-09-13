@@ -12,6 +12,7 @@ Purpose: retrieval-oriented index for agents executing `techrote/byte` issues. L
 | `SECURITY_MODEL.md` | credentials, exposure, public repo, service boundaries | SSH key, secrets, reverse proxy, least privilege |
 | `QUALIFICATION.md` | benchmark/test methodology | bounded load, contention, HDD, network, variance |
 | `OPERATIONS.md` | directory layout, lifecycle, cleanup, monitoring | quota, logs, manifests, restart, maintenance |
+| `DOCTOR.md` | reusable read-only health probes and evidence capture | doctor, require, snapshot, JSON, evidence harness |
 | `EVIDENCE.md` | what outputs and metadata must be retained | raw output, timestamp, redaction, provider state |
 | `EXECUTION_PROTOCOL.md` | branch/PR/check/merge requirements for every issue | autonomous, PR, CI, merge, reconciliation |
 | `VERIFY.md` | final acceptance gates | recovery, Docker, HTTPS, quota, soak, security |

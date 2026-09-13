@@ -48,7 +48,7 @@ When public reachability is needed, prefer Bytesized's documented reverse-proxy/
 
 **Status:** accepted for current scope
 
-Do not attempt to make the Appbox the trusted WireGuard/VPN/router layer. Provider documentation describes VPN-style custom containers as untested, and the account lacks root/network control.
+Do not attempt to make the Appbox the trusted WireGuard/VPN/router layer. Provider documentation describes VPN-style containers as untested, and the account lacks root/network control.
 
 ## D-008 — Remote execution bootstrap should minimise recurring user terminal work
 
@@ -69,3 +69,15 @@ Do not consume more than 50 GB of the 3 TB monthly outbound quota on qualificati
 **Status:** deferred
 
 This programme must still prove portable export/reconstruction locally so a future backup service can ingest a known-good format rather than becoming the first time recovery is tested.
+
+## D-011 — Cron is the canonical periodic scheduler; detached shells are bounded one-offs only
+
+**Status:** accepted from P1-01 evidence
+
+Use user crontab as the canonical mechanism for simple periodic maintenance and scheduled jobs. P1-01 installed a temporary minutely entry, observed it execute, and restored the prior crontab without requiring root privileges.
+
+`systemd --user` is not a current dependency: the noninteractive Appbox session had no usable user DBus/XDG runtime environment, so a transient user unit could not be started.
+
+`tmux` and `screen` are both available and proved able to run detached commands, but they are interactive/resumable session tools rather than the canonical unattended scheduler. `nohup` also proved that a bounded process can survive SSH disconnect; use it only for simple one-off work with explicit logs/cleanup, not as a substitute for a service manager.
+
+Persistent application supervision remains separate from periodic scheduling. Rootless Docker/provider lifecycle should be used for suitable long-lived services only after P1-02 proves the actual tenant path.

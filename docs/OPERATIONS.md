@@ -73,14 +73,24 @@ Programme-owned services should:
 
 ## Scheduling and service supervision
 
-Preferred order after capability testing:
+P1-01 established the current user-level operating model:
 
-1. rootless Docker restart policies for containerised services;
-2. `systemd --user` if provider-supported and persistent;
-3. cron for simple periodic jobs;
-4. provider-managed application lifecycle where it better fits the service.
+1. **Cron is canonical for simple periodic maintenance/scheduled jobs.** A temporary crontab entry executed successfully on the real tenant and the prior crontab was restored afterward.
+2. **`nohup` is acceptable for bounded one-off jobs that must survive an SSH disconnect.** It is not a persistent service manager; jobs need explicit log/output paths and cleanup semantics.
+3. **`tmux` and `screen` are optional interactive/resumable tools.** Both are already installed and proved able to execute detached commands, but automation should not depend on interactive session semantics when cron or a proper application lifecycle is more appropriate.
+4. **Do not depend on `systemd --user`.** The noninteractive tenant session did not expose a usable user DBus/XDG runtime environment.
+5. **Persistent container supervision remains evidence-gated.** If P1-02 proves Bytesized's rootless Docker/provider lifecycle on this tenant, use that for suitable long-lived container services rather than building a shell supervisor.
 
-Do not build an elaborate supervisor until tests establish what survives host maintenance/reboot.
+For cron-managed scripts:
+
+- use absolute command/script paths;
+- explicitly set any required `PATH` or environment in the script rather than assuming an interactive shell;
+- redirect bounded logs to `~/byte/logs/<job>/` once the operational layout exists;
+- make jobs idempotent where practical and safe under delayed/duplicate invocation;
+- use lock files or equivalent when overlapping runs would be unsafe;
+- retain a cleanup path and avoid writing secrets into cron lines or logs.
+
+Do not build an elaborate supervisor until later soak/restart evidence shows a concrete need.
 
 ## Update policy
 

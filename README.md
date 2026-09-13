@@ -45,9 +45,9 @@ It is **not** intended to become an authoritative backup, trustworthy performanc
 
 GitHub issues **#2–#21** are the executable work queue. Each issue is written as an autonomous implementation prompt and is expected to finish through PR, automated checks, evidence reconciliation, and merge.
 
-**Current starting issue:** #2 — `P0-01 Establish secure remote execution and SSH-key bootstrap`.
+**Current starting issue:** #3 — `P0-02 Capture tenant environment, quota and capability inventory`.
 
-The likely first user contribution is a one-time credential/control-plane bootstrap described in [`docs/ACCESS_BOOTSTRAP.md`](docs/ACCESS_BOOTSTRAP.md). Sensitive credentials must stay in the appropriate SSH/GitHub secret store rather than in repository content or chat.
+P0-01 / issue #2 is complete. See [`evidence/P0-01/README.md`](evidence/P0-01/README.md) for the public-safe verification record and [`docs/ACCESS_BOOTSTRAP.md`](docs/ACCESS_BOOTSTRAP.md) for the operational access model.
 
 ## Provider references
 

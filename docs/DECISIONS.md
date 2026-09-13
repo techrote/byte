@@ -52,11 +52,11 @@ Do not attempt to make the Appbox the trusted WireGuard/VPN/router layer. Provid
 
 ## D-008 — Remote execution bootstrap should minimise recurring user terminal work
 
-**Status:** pending implementation
+**Status:** accepted and implemented
 
-Preferred direction: dedicated SSH key authentication, with automation credentials kept outside Git. A GitHub-to-Appbox execution lane may be used if it can be constrained to trusted code and known-host verification.
+Use a dedicated Ed25519 automation identity, strict pinned host verification and a narrow GitHub Actions execution lane for bounded version-controlled Appbox tasks. Authentication material remains outside Git.
 
-**User prerequisite:** likely one-time installation of a public key and/or creation of protected repository secrets because the agent cannot invent the user's private credential.
+The initial live probe proved non-interactive execution on the actual tenant. Current connected-agent safety controls may still require an explicit owner trigger for a credential-bearing workflow run; that is preferable to bypassing the guardrail and is not a reason to weaken host verification or credential isolation.
 
 ## D-009 — Default outbound qualification budget is 50 GB
 

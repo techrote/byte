@@ -2,7 +2,7 @@
 
 **Current result:** blocked at provider rootless-Docker activation; qualification is intentionally incomplete.
 
-A strictly read-only discovery pass was executed against the real Appbox through the trusted GitHub Actions SSH lane in run `34787462598` on 2026-09-13. No image was pulled, no container was created, no route was exposed, and no existing Docker state was modified.
+The corrected strictly read-only discovery pass was executed against the real Appbox through the trusted GitHub Actions SSH lane in run `34787526206` from remote execution commit `4643e6c20908582bff26bf054dc69d7c92895f7c` on 2026-09-13. No image was pulled, no container was created, no route was exposed, and no existing Docker state was modified.
 
 ## Measured tenant state
 
@@ -11,8 +11,9 @@ A strictly read-only discovery pass was executed against the real Appbox through
 - `DOCKER_HOST` is not set in the noninteractive automation session.
 - Docker context is `default`.
 - The default endpoint `/var/run/docker.sock` is not usable by the tenant user.
-- On this Docker build, formatted `docker info` printed a `permission denied` socket diagnostic while returning process rc **0**; qualification tooling must therefore inspect daemon/socket diagnostics rather than trusting the exit code alone.
+- On this Docker build, formatted `docker info` printed a `permission denied` socket diagnostic while returning process rc **0**. The corrected qualifier explicitly reported `docker_default_info_reachable=no`; qualification tooling must therefore inspect daemon/socket diagnostics rather than trusting the exit code alone.
 - Bytesized's documented per-user rootless endpoint `~/.docker/run/docker.sock` is **absent**.
+- The corrected qualifier reported `docker_rootless_info_reachable=no`, `rootless_daemon=unreachable` and `activation_state=provider_rootless_docker_not_initialized_or_not_exposed`.
 - Because that provider rootless socket is absent, the per-user Traefik network could not be checked and no container/Compose/HTTPS/persistence/restart test was attempted.
 
 ## Provider-supported activation prerequisite
@@ -36,7 +37,7 @@ Portainer, Docker-socket web exposure, unnecessary raw public ports, privileged 
 
 ## Tooling correction discovered by the live probe
 
-The first probe exposed a Docker CLI edge case important enough to encode in the reusable tool: a formatted `docker info` can emit a socket permission failure yet return rc 0. The P1-02 qualifier now classifies common daemon/socket diagnostics as unreachable even when the CLI exit status is misleading.
+The first probe exposed a Docker CLI edge case important enough to encode in the reusable tool: a formatted `docker info` can emit a socket permission failure yet return rc 0. The corrected qualifier was then rerun remotely and successfully classified that state as unreachable.
 
 ## Cleanup
 

@@ -1,0 +1,29 @@
+{
+  "task": "P1-02",
+  "result": "blocked_pending_provider_rootless_activation",
+  "live_probe_run": 34787462598,
+  "probe_timestamp_utc": "2026-09-13T22:40:03Z",
+  "docker": {
+    "client_present": true,
+    "client_version": "24.0.2",
+    "compose_present": true,
+    "compose_version": "2.18.1",
+    "context": "default",
+    "docker_host_env_set": false,
+    "default_endpoint_usable": false,
+    "default_info_process_rc": 0,
+    "default_info_semantic_error": "permission_denied_var_run_docker_sock",
+    "provider_rootless_socket": "~/.docker/run/docker.sock",
+    "provider_rootless_socket_present": false,
+    "provider_rootless_daemon_reachable": false
+  },
+  "provider_traefik_network_checked": false,
+  "container_smoke_test_run": false,
+  "compose_smoke_test_run": false,
+  "bind_mount_persistence_test_run": false,
+  "restart_policy_test_run": false,
+  "managed_https_test_run": false,
+  "disk_impact_mutation_test_run": false,
+  "activation_prerequisite": "Use Bytesized-supported activation: install a Docker app from the panel once or ask Bytesized support to enable rootless Docker, then rerun the probe.",
+  "cleanup": "pass_read_only_no_mutation"
+}

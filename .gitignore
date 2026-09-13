@@ -1,0 +1,25 @@
+# Local secrets / credentials
+.env
+.env.*
+*.pem
+*.key
+*.p12
+*.pfx
+secrets/
+.ssh/
+
+# Python / local tooling
+__pycache__/
+*.pyc
+.venv/
+
+# Temporary qualification data
+byte-test/
+.tmp/
+*.part
+
+# OS/editor noise
+.DS_Store
+Thumbs.db
+.vscode/
+.idea/

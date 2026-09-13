@@ -1,0 +1,32 @@
+{
+  "schema_version": 1,
+  "repository": "techrote/byte",
+  "scope": "bytesized-appbox-only",
+  "tasks": [
+    {"id":"P0-01","phase":"P0","title":"Establish secure remote execution and SSH-key bootstrap","depends_on":[],"issue_number":null},
+    {"id":"P0-02","phase":"P0","title":"Capture tenant environment, quota and capability inventory","depends_on":["P0-01"],"issue_number":null},
+    {"id":"P0-03","phase":"P0","title":"Build reusable Appbox doctor/probe toolkit and evidence harness","depends_on":["P0-02"],"issue_number":null},
+
+    {"id":"P1-01","phase":"P1","title":"Qualify SSH, session, scheduling and user-service capabilities","depends_on":["P0-03"],"issue_number":null},
+    {"id":"P1-02","phase":"P1","title":"Qualify rootless Docker, Compose, persistence and managed HTTPS","depends_on":["P0-03"],"issue_number":null},
+    {"id":"P1-03","phase":"P1","title":"Qualify HDD throughput, metadata and archive operations","depends_on":["P0-03"],"issue_number":null},
+    {"id":"P1-04","phase":"P1","title":"Qualify network transfer behaviour and quota accounting conservatively","depends_on":["P0-03"],"issue_number":null},
+    {"id":"P1-05","phase":"P1","title":"Sample shared-host contention and variance across 24-48 hours","depends_on":["P1-01","P1-02","P1-03","P1-04"],"issue_number":null},
+
+    {"id":"P2-01","phase":"P2","title":"Establish byte directory layout, capacity guardrails, logs and cleanup","depends_on":["P1-03","P1-05"],"issue_number":null},
+    {"id":"P2-02","phase":"P2","title":"Build artifact staging and content manifest/checksum tooling","depends_on":["P2-01"],"issue_number":null},
+    {"id":"P2-03","phase":"P2","title":"Build Git mirror and bundle cache workflow","depends_on":["P2-01"],"issue_number":null},
+    {"id":"P2-04","phase":"P2","title":"Deploy minimal authenticated health/status service","depends_on":["P1-02","P2-01"],"issue_number":null},
+    {"id":"P2-05","phase":"P2","title":"Implement scheduled maintenance and health reporting","depends_on":["P1-01","P2-01","P2-04"],"issue_number":null},
+
+    {"id":"P3-01","phase":"P3","title":"Harden SSH, service exposure, credential handling and Docker operation","depends_on":["P2-04","P2-05"],"issue_number":null},
+    {"id":"P3-02","phase":"P3","title":"Implement lightweight bounded job and orchestration helper","depends_on":["P2-02","P2-03","P3-01"],"issue_number":null},
+    {"id":"P3-03","phase":"P3","title":"Build portable export and perform local reconstruction rehearsal","depends_on":["P2-01","P2-02","P2-03","P3-01"],"issue_number":null},
+
+    {"id":"P4-01","phase":"P4","title":"Map useful compute and task envelope with representative workloads","depends_on":["P1-05","P2-02","P2-03"],"issue_number":null},
+    {"id":"P4-02","phase":"P4","title":"Define warm bootstrap and cache bundle format for future consumers","depends_on":["P3-03","P4-01"],"issue_number":null},
+
+    {"id":"P5-01","phase":"P5","title":"Run seven-day soak, availability, quota and cleanup audit","depends_on":["P2-05","P3-02","P3-03","P4-01"],"issue_number":null},
+    {"id":"P5-02","phase":"P5","title":"Run programme-wide verification, reconciliation and handover","depends_on":["P0-01","P0-02","P0-03","P1-01","P1-02","P1-03","P1-04","P1-05","P2-01","P2-02","P2-03","P2-04","P2-05","P3-01","P3-02","P3-03","P4-01","P4-02","P5-01"],"issue_number":null}
+  ]
+}

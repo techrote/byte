@@ -1,0 +1,33 @@
+name: repository-ci
+
+on:
+  pull_request:
+  push:
+    branches: [main]
+
+permissions:
+  contents: read
+
+jobs:
+  validate:
+    runs-on: ubuntu-latest
+    steps:
+      - name: Check out repository
+        uses: actions/checkout@v4
+
+      - name: Validate RAG pack and workflow graph
+        run: python3 tools/validate_repo.py
+
+      - name: Syntax-check shell tools
+        shell: bash
+        run: |
+          set -euo pipefail
+          shopt -s nullglob
+          scripts=(tools/*.sh)
+          for script in "${scripts[@]}"; do
+            echo "bash -n $script"
+            bash -n "$script"
+          done
+
+      - name: Confirm workflow JSON parses independently
+        run: python3 -m json.tool docs/workflow.json >/dev/null

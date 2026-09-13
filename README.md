@@ -43,7 +43,11 @@ It is **not** intended to become an authoritative backup, trustworthy performanc
 3. [`docs/ROADMAP.md`](docs/ROADMAP.md) — programme phases and issue order.
 4. [`docs/PLAN_REVIEW.md`](docs/PLAN_REVIEW.md) — review corrections applied before publication.
 
-GitHub issues are the executable work queue. Each issue is written as an autonomous implementation prompt and is expected to finish through PR, automated checks, evidence reconciliation, and merge.
+GitHub issues **#2–#21** are the executable work queue. Each issue is written as an autonomous implementation prompt and is expected to finish through PR, automated checks, evidence reconciliation, and merge.
+
+**Current starting issue:** #2 — `P0-01 Establish secure remote execution and SSH-key bootstrap`.
+
+The likely first user contribution is a one-time credential/control-plane bootstrap described in [`docs/ACCESS_BOOTSTRAP.md`](docs/ACCESS_BOOTSTRAP.md). Sensitive credentials must stay in the appropriate SSH/GitHub secret store rather than in repository content or chat.
 
 ## Provider references
 

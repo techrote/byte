@@ -1,0 +1,48 @@
+{
+  "task": "P1-01",
+  "result": "pass_with_service_supervision_limitation",
+  "qualifier_source_commit": "1b1d53f994c534374474f5af73c8b85d94984711",
+  "runs": {
+    "active": 34786910210,
+    "verify": 34787023789,
+    "ping": 34787063574
+  },
+  "transport_task_start_seconds": [1.384, 1.564, 3.516],
+  "transport_task_start_median_seconds": 1.564,
+  "transport_task_start_min_seconds": 1.384,
+  "transport_task_start_max_seconds": 3.516,
+  "shell": {
+    "path": "/bin/bash",
+    "umask": "0022",
+    "consistent_samples": 4
+  },
+  "background_responsiveness": "pass",
+  "cron": {
+    "temporary_job_executed": true,
+    "prior_state_restored_by_qualifier": true,
+    "canonical_periodic_scheduler": true
+  },
+  "systemd_user": {
+    "available_noninteractive": false,
+    "return_code": 1,
+    "reason": "no usable DBus/XDG runtime environment"
+  },
+  "tmux": {
+    "present": true,
+    "detached_job_test": "pass",
+    "canonical_scheduler": false
+  },
+  "screen": {
+    "present": true,
+    "detached_job_test": "pass",
+    "canonical_scheduler": false
+  },
+  "nohup": {
+    "disconnect_persistence": "pass",
+    "active_session_finished_utc": "2026-09-13T22:29:49Z",
+    "marker_written_utc": "2026-09-13T22:29:54Z",
+    "verified_from_new_connection_utc": "2026-09-13T22:31:06Z",
+    "role": "bounded_one_off_only"
+  },
+  "cleanup": "pass"
+}

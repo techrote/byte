@@ -10,8 +10,8 @@ The first read-only inventory of the actual tenant confirmed:
 - `jq`, Go and Rust absent from PATH;
 - ext4 home storage with a directly visible user quota;
 - cron/crontab present;
-- no usable user-systemd bus in the noninteractive probe, which remains a P1-01 qualification question;
-- Docker client and Compose installed, while the default context did not expose an accessible daemon, so rootless Docker remains unproven until P1-02;
+- no usable user-systemd bus in the noninteractive probe, which was later resolved operationally by P1-01 in favour of cron for periodic work;
+- Docker client and Compose installed, while the default context did not expose an accessible daemon at that time; P1-02 later activated and qualified the provider rootless path;
 - host-visible CPU, RAM and backing-filesystem totals are shared-host observations only, not tenant entitlement.
 
 Detailed evidence is in `evidence/P0-02/`.
@@ -20,7 +20,7 @@ Detailed evidence is in `evidence/P0-02/`.
 
 ### SSH shell account
 
-Confirmed or expected capabilities:
+Confirmed capabilities:
 
 - shell scripts and common Unix utilities;
 - Git operations;
@@ -31,9 +31,9 @@ Confirmed or expected capabilities:
 - binaries installed into the user's home directory where dependencies permit;
 - rsync/rclone-style file movement;
 - cron scheduling;
-- process supervision using user-level mechanisms where later qualification proves a suitable mechanism.
+- bounded detached jobs using the P1-01 operating model.
 
-Expected constraints:
+Constraints:
 
 - no package-manager root operations;
 - no kernel configuration;
@@ -53,9 +53,25 @@ Best suited to:
 - reproducible utility applications;
 - bounded workers whose CPU behaviour is neighbour-friendly.
 
-P0-02 confirmed the Docker client and Compose plugin only. The first P1-02 live discovery pass then measured Docker 24.0.2 and Compose 2.18.1 but found Bytesized's documented `~/.docker/run/docker.sock` absent. The default `/var/run/docker.sock` is inaccessible and, importantly, the formatted Docker CLI command emitted `permission denied` while returning rc 0. Rootless Docker is therefore **not currently available to the programme** until provider-supported activation is performed and P1-02 is rerun. See `evidence/P1-02/`.
+P1-02 proved this path on the actual tenant after the provider-supported activation step of installing a Docker-backed app from the Bytesized panel:
 
-Do not improvise an alternate daemon or weaken host socket permissions. Current Bytesized guidance says to activate Docker by installing a Docker app from the panel once or asking support to switch it on; only after that should the programme test the provider Traefik network, Compose persistence, restart behaviour and managed HTTPS.
+- Docker server/client **24.0.2** and Compose **v2.18.1** work through the per-user rootless socket `~/.docker/run/docker.sock`;
+- Docker reports the `rootless` security option;
+- the provider `traefik_${USER}` network exists;
+- Compose configuration/startup works;
+- bind-mounted state survived complete container recreation;
+- `restart: unless-stopped` was observed and the service/data survived a safe container restart;
+- a temporary custom web service was externally reachable through provider-managed HTTPS with valid TLS;
+- no raw public port was required;
+- exact test cleanup returned Docker to the original post-activation image/container footprint.
+
+The ordinary default `/var/run/docker.sock` remains inaccessible. Noninteractive programme automation should explicitly set:
+
+```sh
+DOCKER_HOST="unix://$HOME/.docker/run/docker.sock"
+```
+
+The daemon also reports that rootless mode is running **without cgroups** in this environment. Do not interpret Docker `--cpus`, `--memory`, `docker stats`, host CPU count or host RAM totals as enforceable tenant allocation.
 
 Not suitable as an assumption for:
 
@@ -67,6 +83,8 @@ Not suitable as an assumption for:
 
 ### Provider reverse proxy / automatic HTTPS
 
+P1-02 proved the documented provider path on the actual tenant: a custom container joined `traefik_${USER}`, exposed no raw host port, and returned HTTP 200 with successful certificate/hostname verification from an external GitHub-hosted runner.
+
 Best suited to:
 
 - lightweight authenticated web endpoints;
@@ -75,8 +93,6 @@ Best suited to:
 - future orchestration callbacks where exposing a service is justified.
 
 Security rule: an automatically issued TLS certificate does **not** make an application safe. Exposed services still require application authentication/authorization where sensitive actions or information exist.
-
-The managed custom-container HTTPS path remains evidence-gated because P1-02 cannot reach the provider rootless Docker daemon until activation.
 
 ## Task suitability matrix
 
@@ -89,7 +105,7 @@ The managed custom-container HTTPS path remains evidence-gated because P1-02 can
 | File format conversion | Good if modest | data-local work; measure CPU impact |
 | Scheduled cleanup/retention | Excellent | persistent always-on role |
 | Small Python services | Good | little privilege required |
-| Rootless container services | Blocked pending provider activation | client/Compose exist, but documented rootless daemon socket is absent on the measured tenant |
+| Rootless container services | Good with shared-host caveat | actual Docker/Compose/persistence/restart/HTTPS path is proven; cgroup resource enforcement is unavailable |
 | Lightweight databases/indexes | Good with durability caveat | useful state, but must remain exportable |
 | Build small utilities | Good | GCC/G++/Make/CMake are already present |
 | Large C++ build farm | Poor/conditional | shared CPU; test only if genuinely useful |

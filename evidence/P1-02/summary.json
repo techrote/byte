@@ -1,0 +1,65 @@
+{
+  "task": "P1-02",
+  "result": "pass",
+  "activation": {
+    "initial_probe_run": 34787526206,
+    "initial_state": "provider_rootless_socket_absent",
+    "manual_provider_action": "installed Bytesized Docker-backed Wsrelay app",
+    "post_activation_probe_run": 34790869874,
+    "post_activation_probe_timestamp_utc": "2026-09-13T23:51:10Z"
+  },
+  "docker": {
+    "client_version": "24.0.2",
+    "compose_version": "2.18.1",
+    "default_endpoint_usable": false,
+    "provider_rootless_socket": "~/.docker/run/docker.sock",
+    "provider_rootless_socket_present": true,
+    "provider_rootless_info_reachable": true,
+    "provider_rootless_daemon_reachable": true,
+    "security_option_rootless": true,
+    "provider_traefik_network_present": true,
+    "rootless_cgroups_available": false
+  },
+  "runtime": {
+    "run": 34791197678,
+    "remote_execution_commit": "c6c5f7409062eacc7b749dd0fef5a91640ab8655",
+    "timestamp_utc": "2026-09-13T23:58:30Z",
+    "container_smoke": true,
+    "compose_config": true,
+    "bind_mount_initial_read": true,
+    "bind_mount_survived_container_recreation": true,
+    "restart_policy": "unless-stopped",
+    "restart_roundtrip": true,
+    "managed_route_network_membership": true,
+    "raw_public_ports_published": false
+  },
+  "https": {
+    "verified_from": "GitHub-hosted runner outside Appbox",
+    "http_status": 200,
+    "tls_verify_result": 0,
+    "attempt": 1,
+    "connect_seconds": 0.148846,
+    "tls_seconds": 0.257648,
+    "total_seconds": 0.390254,
+    "body_nonempty": true,
+    "public_hostname_stored": false
+  },
+  "disk": {
+    "baseline_images": 3,
+    "baseline_active_containers": 2,
+    "baseline_image_size_mb": 331.6,
+    "setup_peak_images": 5,
+    "setup_peak_active_containers": 4,
+    "setup_peak_image_size_mb": 352.3,
+    "temporary_image_delta_mb": 20.7,
+    "final_images": 3,
+    "final_active_containers": 2,
+    "final_image_size_mb": 331.6
+  },
+  "preliminary_failure": {
+    "run": 34791166337,
+    "classification": "compose_remove_race_not_platform_failure"
+  },
+  "final_cleanup_run": 34791295742,
+  "cleanup": "pass_returned_to_pretest_post_activation_baseline"
+}

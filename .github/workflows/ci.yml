@@ -110,6 +110,28 @@ jobs:
               "$BYTE_USER@$BYTE_HOST" \
               'set -eu; tmp=$(mktemp -d /tmp/byte-remote.XXXXXX); trap '\''rm -rf "$tmp"'\'' EXIT HUP INT TERM; tar -xf - -C "$tmp"; timeout 120 bash "$tmp/remote/task.sh"'
 
+      - name: Test observed high ports from outside Appbox
+        shell: bash
+        run: |
+          set -euo pipefail
+          for port in 18214 37586; do
+            if timeout 4 bash -c "</dev/tcp/$BYTE_HOST/$port" 2>/dev/null; then
+              echo "external_tcp_${port}=open"
+            else
+              echo "external_tcp_${port}=closed_or_filtered"
+            fi
+            for path in / /dashboard/ /api/overview /api/rawdata /ping /metrics; do
+              set +e
+              metrics=$(curl --silent --output /dev/null \
+                --connect-timeout 3 --max-time 5 \
+                --write-out 'http=%{http_code};total=%{time_total}' \
+                "http://$BYTE_HOST:$port$path" 2>/dev/null)
+              rc=$?
+              set -e
+              echo "external_http_${port}${path}=rc:${rc};${metrics}"
+            done
+          done
+
       - name: Remove ephemeral SSH material
         if: always()
         shell: bash

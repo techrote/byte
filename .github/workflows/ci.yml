@@ -97,7 +97,7 @@ jobs:
         run: |
           set -euo pipefail
           test -f remote/task.sh
-          tar -cf - remote/task.sh tools/appbox_probe.sh | \
+          tar -cf - remote/task.sh tools/appbox_probe.sh tools/sample_contention.sh | \
             ssh \
               -i "$HOME/.ssh/byte_agent" \
               -o IdentitiesOnly=yes \
@@ -108,7 +108,7 @@ jobs:
               -o ServerAliveInterval=15 \
               -o ServerAliveCountMax=2 \
               "$BYTE_USER@$BYTE_HOST" \
-              'set -eu; tmp=$(mktemp -d /tmp/byte-remote.XXXXXX); trap '\''rm -rf "$tmp"'\'' EXIT HUP INT TERM; tar -xf - -C "$tmp"; timeout 120 bash "$tmp/remote/task.sh"'
+              'set -eu; tmp=$(mktemp -d /tmp/byte-remote.XXXXXX); trap '\''rm -rf "$tmp"'\'' EXIT HUP INT TERM; tar -xf - -C "$tmp"; timeout 180 bash "$tmp/remote/task.sh"'
 
       - name: Remove ephemeral SSH material
         if: always()

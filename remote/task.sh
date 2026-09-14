@@ -1,38 +1,73 @@
 #!/usr/bin/env bash
 set -euo pipefail
 
-# Default remote task for the trusted `remote/` PR execution lane.
-# Keep this intentionally read-only. Issue branches may replace this file with a
-# bounded, versioned task appropriate to that issue; fork PRs never receive the
-# Appbox credentials.
+# Read-only audit of the two rootless Docker host-port mappings seen in the
+# Bytesized process view. No container, route, listener, or config is changed.
+
+export DOCKER_HOST="unix://$HOME/.docker/run/docker.sock"
+target_ports=(18214 37586)
 
 printf 'remote_exec=ok\n'
-printf 'uid=%s\n' "$(id -u)"
-printf 'gid=%s\n' "$(id -g)"
-printf 'kernel=%s\n' "$(uname -srmo)"
-printf 'shell=%s\n' "${SHELL:-unknown}"
+printf 'audit=rootless-port-mappings\n'
+printf 'timestamp_utc=%s\n' "$(date -u +%Y-%m-%dT%H:%M:%SZ)"
 
-if command -v quota >/dev/null 2>&1; then
-  echo 'quota=available'
+docker info --format 'docker_server={{.ServerVersion}}' >/dev/null
+printf 'docker_rootless_reachable=yes\n'
+
+printf 'container_mapping_begin\n'
+docker inspect $(docker ps -q) | python3 -c '
+import json, sys
+ports={"18214","37586"}
+for c in json.load(sys.stdin):
+    name=c.get("Name","").lstrip("/")
+    image=c.get("Config",{}).get("Image")
+    bindings=c.get("HostConfig",{}).get("PortBindings") or {}
+    matches=[]
+    for container_port, rows in bindings.items():
+        for row in rows or []:
+            hp=str(row.get("HostPort", ""))
+            if hp in ports:
+                matches.append((hp, container_port, row.get("HostIp", "")))
+    if matches:
+        restart=(c.get("HostConfig",{}).get("RestartPolicy") or {}).get("Name")
+        exposed=sorted((c.get("Config",{}).get("ExposedPorts") or {}).keys())
+        labels=c.get("Config",{}).get("Labels") or {}
+        traefik_enabled=labels.get("traefik.enable")
+        print(f"container={name}")
+        print(f"image={image}")
+        print(f"restart_policy={restart}")
+        print(f"exposed_ports={','.join(exposed)}")
+        print(f"traefik_enable={traefik_enabled}")
+        for hp, cp, hip in sorted(matches):
+            print(f"binding=host:{hp}->container:{cp};host_ip={hip or '<unspecified>'}")
+'
+printf 'container_mapping_end\n'
+
+printf 'listener_snapshot_begin\n'
+if command -v ss >/dev/null 2>&1; then
+  ss -ltnp 2>&1 | grep -E ':(18214|37586)([[:space:]]|$)' \
+    | sed -e "s#${HOME//\#/\\#}#<HOME>#g" -e "s#${USER:-__NO_USER__}#<USER>#g" || true
 else
-  echo 'quota=missing'
+  echo 'ss=unavailable'
 fi
+printf 'listener_snapshot_end\n'
 
-if df -h "$HOME" >/dev/null 2>&1; then
-  df -h "$HOME" | awk 'NR==1 || NR==2 {print}'
-fi
-
-for tool in git python3 rsync rclone tar gzip zstd sha256sum curl cron crontab systemctl docker; do
-  if command -v "$tool" >/dev/null 2>&1; then
-    printf 'tool:%s=present\n' "$tool"
+for port in "${target_ports[@]}"; do
+  printf 'local_tcp_%s=' "$port"
+  if timeout 3 bash -c "</dev/tcp/127.0.0.1/$port" 2>/dev/null; then
+    echo open
   else
-    printf 'tool:%s=missing\n' "$tool"
+    echo closed_or_filtered
   fi
+
+  set +e
+  metrics=$(curl --silent --show-error --output /dev/null \
+    --connect-timeout 2 --max-time 3 \
+    --write-out 'rc_http=%{http_code};remote_port=%{remote_port};total=%{time_total}' \
+    "http://127.0.0.1:$port/" 2>/dev/null)
+  rc=$?
+  set -e
+  printf 'local_http_%s=rc:%s;%s\n' "$port" "$rc" "$metrics"
 done
 
-if command -v docker >/dev/null 2>&1; then
-  docker version --format 'docker_client={{.Client.Version}} docker_server={{if .Server}}{{.Server.Version}}{{else}}unavailable{{end}}' 2>/dev/null || true
-  docker compose version 2>/dev/null || true
-fi
-
-printf 'remote_probe=complete\n'
+printf 'audit_complete=yes\n'

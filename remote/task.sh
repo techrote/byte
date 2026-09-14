@@ -6,6 +6,7 @@ set -euo pipefail
 
 export DOCKER_HOST="unix://$HOME/.docker/run/docker.sock"
 target_ports=(18214 37586)
+probe_paths=(/ /dashboard/ /api/overview /api/rawdata /ping /metrics)
 
 printf 'remote_exec=ok\n'
 printf 'audit=rootless-port-mappings\n'
@@ -43,6 +44,20 @@ for c in json.load(sys.stdin):
 '
 printf 'container_mapping_end\n'
 
+printf 'traefik_runtime_config_begin\n'
+docker inspect traefik | python3 -c '
+import json, sys
+c=json.load(sys.stdin)[0]
+entry=c.get("Config",{}).get("Entrypoint") or []
+cmd=c.get("Config",{}).get("Cmd") or []
+print("entrypoint={}".format(" ".join(entry)))
+for arg in cmd:
+    low=arg.lower()
+    if any(key in low for key in ("entrypoint", "api", "dashboard", "ping", "metrics", "provider", "address")):
+        print("cmd_arg={}".format(arg))
+'
+printf 'traefik_runtime_config_end\n'
+
 printf 'listener_snapshot_begin\n'
 if command -v ss >/dev/null 2>&1; then
   ss -ltnp 2>&1 | grep -E ':(18214|37586)([[:space:]]|$)' \
@@ -60,14 +75,18 @@ for port in "${target_ports[@]}"; do
     echo closed_or_filtered
   fi
 
-  set +e
-  metrics=$(curl --silent --show-error --output /dev/null \
-    --connect-timeout 2 --max-time 3 \
-    --write-out 'rc_http=%{http_code};remote_port=%{remote_port};total=%{time_total}' \
-    "http://127.0.0.1:$port/" 2>/dev/null)
-  rc=$?
-  set -e
-  printf 'local_http_%s=rc:%s;%s\n' "$port" "$rc" "$metrics"
+  for path in "${probe_paths[@]}"; do
+    set +e
+    metrics=$(curl --silent --show-error --output /dev/null \
+      --connect-timeout 2 --max-time 3 \
+      --write-out 'http=%{http_code};total=%{time_total}' \
+      "http://127.0.0.1:$port$path" 2>/dev/null)
+    rc=$?
+    set -e
+    safe_path=${path//\//_}
+    [[ -n "$safe_path" ]] || safe_path=root
+    printf 'local_http_%s%s=rc:%s;%s\n' "$port" "$path" "$rc" "$metrics"
+  done
 done
 
 printf 'audit_complete=yes\n'

@@ -73,13 +73,13 @@ Programme-owned services should:
 
 ## Scheduling and service supervision
 
-P1-01 established the current user-level operating model:
+P1-01 and P1-02 establish the current user-level operating model:
 
 1. **Cron is canonical for simple periodic maintenance/scheduled jobs.** A temporary crontab entry executed successfully on the real tenant and the prior crontab was restored afterward.
 2. **`nohup` is acceptable for bounded one-off jobs that must survive an SSH disconnect.** It is not a persistent service manager; jobs need explicit log/output paths and cleanup semantics.
 3. **`tmux` and `screen` are optional interactive/resumable tools.** Both are already installed and proved able to execute detached commands, but automation should not depend on interactive session semantics when cron or a proper application lifecycle is more appropriate.
 4. **Do not depend on `systemd --user`.** The noninteractive tenant session did not expose a usable user DBus/XDG runtime environment.
-5. **Persistent container supervision remains evidence-gated.** If P1-02 proves Bytesized's rootless Docker/provider lifecycle on this tenant, use that for suitable long-lived container services rather than building a shell supervisor.
+5. **Rootless Docker/Compose is the preferred lifecycle for suitable persistent custom services.** P1-02 proved Compose startup, bind-mounted persistence, `restart: unless-stopped`, safe container restart and provider-managed HTTPS on the actual tenant.
 
 For cron-managed scripts:
 
@@ -90,7 +90,18 @@ For cron-managed scripts:
 - use lock files or equivalent when overlapping runs would be unsafe;
 - retain a cleanup path and avoid writing secrets into cron lines or logs.
 
-Do not build an elaborate supervisor until later soak/restart evidence shows a concrete need.
+For programme-managed containers:
+
+- in noninteractive automation explicitly set `DOCKER_HOST=unix://$HOME/.docker/run/docker.sock`;
+- keep Compose projects and persistent bind-mounted state in explicit programme-owned directories, eventually under `~/byte/apps/<service>/` once the layout phase creates it;
+- prefer the provider `traefik_${USER}` network and managed HTTPS for justified web exposure rather than publishing raw host ports;
+- use application authentication/authorization for sensitive public services;
+- use `restart: unless-stopped` for suitable long-lived services;
+- do not treat Docker CPU/RAM limits or host totals as enforceable tenant allocation because the measured rootless daemon runs without cgroups;
+- never make broad cleanup commands responsible for provider-managed one-click applications; delete only exact programme-owned resources;
+- pin versions/digests for important long-lived services where practical.
+
+Do not build an elaborate shell supervisor when cron covers periodic work and the qualified container lifecycle covers persistent services.
 
 ## Update policy
 

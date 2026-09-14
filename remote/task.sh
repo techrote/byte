@@ -58,6 +58,43 @@ for arg in cmd:
 '
 printf 'traefik_runtime_config_end\n'
 
+printf 'wsrelay_route_policy_begin\n'
+route_host=$(docker inspect wsrelay | python3 -c '
+import json,re,sys
+c=json.load(sys.stdin)[0]
+labels=c.get("Config",{}).get("Labels") or {}
+rules=[v for k,v in labels.items() if k.startswith("traefik.http.routers.") and k.endswith(".rule")]
+for rule in rules:
+    m=re.search(r"Host\(`([^`]+)`\)", rule)
+    if m:
+        print(m.group(1)); break
+')
+docker inspect wsrelay | python3 -c '
+import json,sys
+c=json.load(sys.stdin)[0]
+labels=c.get("Config",{}).get("Labels") or {}
+router={k:v for k,v in labels.items() if k.startswith("traefik.http.routers.")}
+service={k:v for k,v in labels.items() if k.startswith("traefik.http.services.")}
+print("traefik_enabled={}".format(labels.get("traefik.enable")))
+print("router_rule_present={}".format("yes" if any(k.endswith(".rule") for k in router) else "no"))
+print("router_entrypoints={}".format(",".join(sorted({v for k,v in router.items() if k.endswith(".entrypoints")})) or "unspecified"))
+print("router_middlewares_present={}".format("yes" if any(k.endswith(".middlewares") for k in router) else "no"))
+print("service_port_values={}".format(",".join(sorted({v for k,v in service.items() if k.endswith(".loadbalancer.server.port")})) or "unspecified"))
+'
+if [[ -n "$route_host" ]]; then
+  set +e
+  routed=$(curl --silent --output /dev/null --connect-timeout 2 --max-time 3 \
+    -H "Host: $route_host" \
+    --write-out 'http=%{http_code};bytes=%{size_download};total=%{time_total}' \
+    "http://127.0.0.1:37586/" 2>/dev/null)
+  routed_rc=$?
+  set -e
+  printf 'raw_web_with_app_host=rc:%s;%s\n' "$routed_rc" "$routed"
+else
+  echo 'raw_web_with_app_host=not_tested_no_host_rule'
+fi
+printf 'wsrelay_route_policy_end\n'
+
 printf 'listener_snapshot_begin\n'
 if command -v ss >/dev/null 2>&1; then
   ss -ltnp 2>&1 | grep -E ':(18214|37586)([[:space:]]|$)' \
@@ -83,8 +120,6 @@ for port in "${target_ports[@]}"; do
       "http://127.0.0.1:$port$path" 2>/dev/null)
     rc=$?
     set -e
-    safe_path=${path//\//_}
-    [[ -n "$safe_path" ]] || safe_path=root
     printf 'local_http_%s%s=rc:%s;%s\n' "$port" "$path" "$rc" "$metrics"
   done
 done

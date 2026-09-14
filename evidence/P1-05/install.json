@@ -1,0 +1,33 @@
+{
+  "task": "P1-05",
+  "state": "sampling_in_progress",
+  "install_run": 34791735914,
+  "install_timestamp_utc": "2026-09-14T00:09:03Z",
+  "window": {
+    "start_utc": "2026-09-14T00:09:04Z",
+    "end_utc": "2026-09-16T00:09:04Z",
+    "duration_hours": 48,
+    "interval_minutes": 30
+  },
+  "guardrails": {
+    "persistent_seed_mib": 32,
+    "approx_peak_disposable_mib": 66,
+    "overlap_lock": true,
+    "minimum_filesystem_headroom_gib": 2,
+    "minimum_quota_headroom_gib": 2,
+    "self_expiring_workload_window": true,
+    "cron_marker_present_after_install": true,
+    "lock_present_after_first_sample": false
+  },
+  "first_sample": {
+    "timestamp_utc": "2026-09-14T00:09:04Z",
+    "sample_total_ms": 1760.053,
+    "seq_write_mib_s": 107.848,
+    "sha256_mib_s": 94.205,
+    "zstd_mib_s": 325.810,
+    "docker_info_ms": 86.233,
+    "https_route_found": true,
+    "https_total_ms": 150.300
+  },
+  "interpretation": "Bootstrap only. No contention or time-of-day conclusion is valid until the elapsed-time evidence gate is met."
+}

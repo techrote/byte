@@ -33,13 +33,13 @@ for c in json.load(sys.stdin):
         exposed=sorted((c.get("Config",{}).get("ExposedPorts") or {}).keys())
         labels=c.get("Config",{}).get("Labels") or {}
         traefik_enabled=labels.get("traefik.enable")
-        print(f"container={name}")
-        print(f"image={image}")
-        print(f"restart_policy={restart}")
-        print(f"exposed_ports={','.join(exposed)}")
-        print(f"traefik_enable={traefik_enabled}")
+        print("container={}".format(name))
+        print("image={}".format(image))
+        print("restart_policy={}".format(restart))
+        print("exposed_ports={}".format(",".join(exposed)))
+        print("traefik_enable={}".format(traefik_enabled))
         for hp, cp, hip in sorted(matches):
-            print(f"binding=host:{hp}->container:{cp};host_ip={hip or '<unspecified>'}")
+            print("binding=host:{}->container:{};host_ip={}".format(hp, cp, hip or "unspecified"))
 '
 printf 'container_mapping_end\n'
 

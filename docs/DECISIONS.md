@@ -20,11 +20,13 @@ The Appbox may hold caches, staging data, mirrors, manifests and operational sta
 
 ## D-003 — Rootless Docker is the preferred packaging mechanism for persistent custom services
 
-**Status:** accepted with evidence gate
+**Status:** accepted and validated by P1-02
 
-Use rootless Docker/Compose for suitable custom services after actual tenant validation. Do not interpret it as privileged isolation or enforceable CPU/RAM quotas.
+Use rootless Docker/Compose for suitable custom services. P1-02 proved the actual tenant's per-user daemon at `~/.docker/run/docker.sock`, Compose startup, bind-mounted persistence, `restart: unless-stopped`, safe restart behaviour and provider-managed HTTPS.
 
-**Reason:** provider explicitly supports it and supplies HTTPS routing, but documents resource/isolation limitations.
+Noninteractive automation should explicitly set `DOCKER_HOST=unix://$HOME/.docker/run/docker.sock`. Do not interpret containerisation as privileged isolation or Docker CPU/RAM figures as enforceable tenant quotas; the measured rootless daemon reports that cgroups are unavailable in this environment.
+
+**Reason:** provider support is now backed by live tenant evidence, while the provider's documented resource/isolation limitations were also observed directly.
 
 ## D-004 — Performance work measures useful-task variance, not entitlement
 
@@ -40,9 +42,11 @@ Portainer is convenient but requires access to the rootless Docker socket, creat
 
 ## D-006 — Public services use managed HTTPS and application authentication
 
-**Status:** accepted
+**Status:** accepted and HTTPS path validated by P1-02
 
-When public reachability is needed, prefer Bytesized's documented reverse-proxy/HTTPS path. TLS alone is not authorization; sensitive services require application-level authentication.
+When public reachability is needed, prefer Bytesized's documented reverse-proxy/HTTPS path. P1-02 proved an exact temporary custom container could join `traefik_${USER}` and return HTTP 200 with successful TLS verification from an external GitHub-hosted runner without publishing a raw host port.
+
+TLS alone is not authorization; sensitive services require application-level authentication.
 
 ## D-007 — No VPN/router role
 
@@ -72,7 +76,7 @@ This programme must still prove portable export/reconstruction locally so a futu
 
 ## D-011 — Cron is the canonical periodic scheduler; detached shells are bounded one-offs only
 
-**Status:** accepted from P1-01 evidence
+**Status:** accepted from P1-01 evidence, extended by P1-02
 
 Use user crontab as the canonical mechanism for simple periodic maintenance and scheduled jobs. P1-01 installed a temporary minutely entry, observed it execute, and restored the prior crontab without requiring root privileges.
 
@@ -80,4 +84,4 @@ Use user crontab as the canonical mechanism for simple periodic maintenance and 
 
 `tmux` and `screen` are both available and proved able to run detached commands, but they are interactive/resumable session tools rather than the canonical unattended scheduler. `nohup` also proved that a bounded process can survive SSH disconnect; use it only for simple one-off work with explicit logs/cleanup, not as a substitute for a service manager.
 
-Persistent application supervision remains separate from periodic scheduling. Rootless Docker/provider lifecycle should be used for suitable long-lived services only after P1-02 proves the actual tenant path.
+Persistent application supervision remains separate from periodic scheduling. P1-02 proved the rootless Docker/Compose lifecycle and `restart: unless-stopped`, so suitable long-lived custom services should use the provider container lifecycle instead of an improvised shell supervisor.

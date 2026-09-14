@@ -1,44 +1,86 @@
 # P1-02 — Rootless Docker / Compose / managed HTTPS qualification
 
-**Current result:** blocked at provider rootless-Docker activation; qualification is intentionally incomplete.
+**Result: PASS.** The actual Appbox rootless-Docker path, Compose persistence, restart behaviour and provider-managed HTTPS were qualified end to end, and all programme-created test resources were removed afterward.
 
-The corrected strictly read-only discovery pass was executed against the real Appbox through the trusted GitHub Actions SSH lane in run `34787526206` from remote execution commit `4643e6c20908582bff26bf054dc69d7c92895f7c` on 2026-09-13. No image was pulled, no container was created, no route was exposed, and no existing Docker state was modified.
+## Activation history
 
-## Measured tenant state
+The initial read-only probe, GitHub Actions run `34787526206`, found Docker 24.0.2 and Compose v2.18.1 installed but Bytesized's documented per-user socket `~/.docker/run/docker.sock` absent. The default `/var/run/docker.sock` was not usable by the tenant account. The qualifier also discovered that this Docker CLI can print a socket permission failure while a formatted `docker info` exits with rc 0, so the tool was corrected to classify common daemon/socket diagnostics semantically rather than trusting exit status alone.
 
-- Docker CLI is installed: **24.0.2**.
-- Docker Compose plugin is installed: **v2.18.1**.
-- `DOCKER_HOST` is not set in the noninteractive automation session.
-- Docker context is `default`.
-- The default endpoint `/var/run/docker.sock` is not usable by the tenant user.
-- On this Docker build, formatted `docker info` printed a `permission denied` socket diagnostic while returning process rc **0**. The corrected qualifier explicitly reported `docker_default_info_reachable=no`; qualification tooling must therefore inspect daemon/socket diagnostics rather than trusting the exit code alone.
-- Bytesized's documented per-user rootless endpoint `~/.docker/run/docker.sock` is **absent**.
-- The corrected qualifier reported `docker_rootless_info_reachable=no`, `rootless_daemon=unreachable` and `activation_state=provider_rootless_docker_not_initialized_or_not_exposed`.
-- Because that provider rootless socket is absent, the per-user Traefik network could not be checked and no container/Compose/HTTPS/persistence/restart test was attempted.
+The user then performed the least-invasive provider-supported activation action by installing the Bytesized Docker-backed **Wsrelay** application from the panel. No host-level workaround, socket-permission change or ad-hoc daemon was used.
 
-## Provider-supported activation prerequisite
+Post-activation run `34790869874` at `2026-09-13T23:51:10Z` confirmed:
 
-Bytesized's current Docker guide states that if `docker info` cannot reach a daemon, the supported activation route is to install a Docker app from the Bytesized panel once (the guide names Vaultwarden as a small example), or ask Bytesized support to switch Docker on. The same guide documents `~/.docker/run/docker.sock` as the Appbox rootless socket and the `traefik_USERNAME` network as the managed reverse-proxy path for custom containers.
+- `~/.docker/run/docker.sock` exists as a Unix socket;
+- explicit `DOCKER_HOST=unix://$HOME/.docker/run/docker.sock` reaches Docker server **24.0.2**;
+- Docker security options include `rootless` and `cgroupns`;
+- Compose **v2.18.1** is available;
+- the provider network `traefik_${USER}` exists;
+- the ordinary default endpoint `/var/run/docker.sock` remains inaccessible, as expected for this tenant;
+- baseline Docker state after provider activation was **3 images / 2 active containers / 331.6 MB** of images.
 
-Do **not** work around this by starting an ad-hoc privileged/system Docker daemon, changing host socket permissions, or inventing an unsupported user daemon. The programme should resume P1-02 after the provider-supported rootless service has been activated.
+For noninteractive programme automation, explicitly select the per-user rootless socket instead of assuming the default Docker endpoint.
 
-## Next qualification step after activation
+## Canonical bounded runtime qualification
 
-Rerun `tools/qualify_docker.sh --phase probe`. Only after it reports the rootless daemon reachable should P1-02 proceed to bounded mutation tests:
+The canonical mutation pass was GitHub Actions run `34791197678` from remote execution commit `c6c5f7409062eacc7b749dd0fef5a91640ab8655`, with the remote qualification beginning at `2026-09-13T23:58:30Z`.
 
-1. `hello-world`/equivalent smoke container;
-2. minimal Compose smoke test;
-3. persistent bind-mount round-trip through container recreation;
-4. temporary `restart: unless-stopped` behaviour check;
-5. temporary provider-Traefik route with externally verified HTTPS;
-6. Docker disk-use measurement and complete cleanup.
+All temporary resources used an exact `byte-p1-02-*` namespace. No privileged container, Docker-socket exposure, raw public port, VPN/network manipulation or large application stack was used.
 
-Portainer, Docker-socket web exposure, unnecessary raw public ports, privileged networking and large application stacks remain out of scope.
+Measured results:
 
-## Tooling correction discovered by the live probe
+- small `alpine:3.20` smoke container: **pass**;
+- Compose configuration parse and startup: **pass**;
+- host bind-mounted token readable inside the first container: **pass**;
+- bind-mounted token survived complete container removal and recreation: **pass**;
+- configured restart policy observed as `unless-stopped`: **pass**;
+- data remained readable after a safe `docker restart`: **pass**;
+- temporary web container joined the provider `traefik_${USER}` network: **pass**;
+- no host port was published for the web container: by design;
+- provider-managed route was generated from the existing tenant routing convention without storing the private tenant hostname in repository evidence.
 
-The first probe exposed a Docker CLI edge case important enough to encode in the reusable tool: a formatted `docker info` can emit a socket permission failure yet return rc 0. The corrected qualifier was then rerun remotely and successfully classified that state as unreachable.
+The rootless daemon emitted `Running in rootless-mode without cgroups. Systemd is required to enable cgroups in rootless-mode.` This agrees with provider guidance that Docker CPU/RAM flags on this platform must not be treated as enforceable tenant allocation.
 
-## Cleanup
+## External managed-HTTPS proof
 
-The trusted execution lane removed its temporary remote task directory and runner-side SSH material. Since the P1-02 pass was read-only, there were no containers, images, volumes, bind-mount test files or public routes to remove.
+The temporary `traefik/whoami` service was reached from the GitHub-hosted Actions runner, not from the Appbox itself. The generated URL was masked in Actions logs and is intentionally not stored in repository evidence.
+
+The first external attempt succeeded with:
+
+- HTTP status: **200**;
+- TLS verification result: **0** (certificate/hostname verification successful);
+- TCP connect: **0.148846 s**;
+- TLS handshake: **0.257648 s**;
+- total request time: **0.390254 s**;
+- response body: non-empty.
+
+This proves the actual tenant's custom-container path through the provider reverse proxy and automatic HTTPS without publishing a raw service port.
+
+## Disk impact
+
+The true post-Wsrelay baseline before any P1-02 image pull was:
+
+- 3 images;
+- 2 active containers;
+- 331.6 MB image footprint.
+
+At the runtime-test peak:
+
+- 5 images;
+- 4 active containers;
+- 352.3 MB image footprint.
+
+The temporary image-footprint increase was approximately **20.7 MB**. No Docker volumes were created; persistence was tested with an ordinary bind mount.
+
+## Cleanup and preliminary-run note
+
+An earlier preliminary mutation run `34791166337` stopped after the initial bind-mount check because `docker compose rm` encountered a transient `removal ... is already in progress` race. That run had already proved the smoke container, route-host discovery, Compose parsing and first bind read. The canonical run repeated the path successfully and completed all acceptance tests, so the preliminary failure is classified as a test-orchestration/runtime race rather than a provider limitation.
+
+Canonical cleanup removed the temporary route, containers, Compose network, bind-mounted test directory and the newly pulled `traefik/whoami` image. Because the preliminary run had left `alpine:3.20` cached, a final exact-scope cleanup run `34791295742` removed that remaining issue-owned image and verified:
+
+- temporary containers absent;
+- temporary Compose network absent;
+- temporary bind data absent;
+- final Docker state **3 images / 2 active containers / 331.6 MB**, exactly matching the pre-test post-Wsrelay baseline;
+- provider-managed/Wsrelay containers were left untouched.
+
+P1-02 therefore satisfies all acceptance criteria for rootless Docker, Compose, bind persistence, restart behaviour, managed HTTPS, disk-impact measurement and cleanup.

@@ -49,7 +49,27 @@ Important documented constraints:
 
 Source: https://bytesized-hosting.com/guides/run-your-own-docker-containers-on-a-seedbox
 
-Operational consequence: containerisation is useful for packaging/services, but not a reliable resource-isolation mechanism on this platform.
+### Measured tenant confirmation — P1-02
+
+The first live probe found the client and Compose plugin installed but the documented per-user daemon socket absent. Installing a Docker-backed app from the Bytesized panel using the provider-supported path initialized the tenant's rootless Docker environment.
+
+After activation, the actual tenant measured:
+
+- Docker server/client **24.0.2** and Compose **v2.18.1**;
+- reachable rootless daemon at `~/.docker/run/docker.sock`;
+- Docker security options containing `rootless`;
+- provider network `traefik_${USER}` present;
+- ordinary `/var/run/docker.sock` still inaccessible to the tenant;
+- Compose startup and bind-mounted persistence working;
+- `restart: unless-stopped` present and a safe container restart preserving service data;
+- temporary custom web container reachable externally through provider-managed HTTPS with successful TLS verification and no raw published port;
+- exact qualification cleanup returning Docker to its pre-test post-activation footprint.
+
+Noninteractive sessions did not automatically select the per-user socket, so programme automation should explicitly use `DOCKER_HOST=unix://$HOME/.docker/run/docker.sock`.
+
+The rootless daemon also emitted a warning that it is running **without cgroups**, directly reinforcing the provider warning that Docker CPU/RAM controls are not a tenant-resource entitlement mechanism here.
+
+Operational consequence: containerisation is qualified and useful for packaging/persistent services, but not a reliable resource-isolation or performance-entitlement mechanism on this platform.
 
 ## Fair-use / contention model
 
